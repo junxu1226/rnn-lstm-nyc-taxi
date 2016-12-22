@@ -1,7 +1,7 @@
 config = {}
 
 config['network_mode'] = 0
-config['batch_size'] = [128, 12]  # number of samples taken per each update. You might want to increase it to make the training faster, but you might not get the same result.
+config['batch_size'] = [100, 12]  # number of samples taken per each update. You might want to increase it to make the training faster, but you might not get the same result.
 config['hidden_size'] = [200, 200]
 config['learning_rate'] = [.0003, .0003]
 config['learning_rate_decay'] = [0.999, 0.999]  # set to 0 to not decay learning rate
@@ -9,7 +9,7 @@ config['decay_rate'] = [0.999, 0.999]  # decay rate for rmsprop
 config['step_clipping'] = [10.0, 10.0]  # clip norm of gradients at this value
 config['dropout'] = [.0, .0]
 config['nepochs'] = [1000, 1000]  # number of full passes through the training data
-config['seq_length'] = [256, 24]  # number of waypoints in the truncated sequence
+config['seq_length'] = [400, 24]  # number of waypoints in the truncated sequence
 config['hdf5_file'] = ['input.hdf5', 'input_two.hdf5']  # hdf5 file with Fuel format
 config['layer_models'] = [['lstm'], ['lstm']] # feedforward, lstm, rnn
 config['num_layers'] = len(config['layer_models'][config['network_mode']])
