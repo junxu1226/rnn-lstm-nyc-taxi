@@ -23,10 +23,10 @@ from fuel.datasets import H5PYDataset
 locals().update(config)
 
 def my_longitude(ndarray):
-    return map(lambda x: (x - 2) / 7 - 73.915, ndarray)
+    return map(lambda x: (x - 2.1) / 4.0 - 73.925, ndarray)
 
 def my_latitude(ndarray):
-    return map(lambda x: (x - 2) / 7 + 40.76, ndarray)
+    return map(lambda x: (x - 2.0) / 4.0 + 40.775, ndarray)
 
 
 def sample(x_curr, fprop):

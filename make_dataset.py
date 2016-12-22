@@ -4,6 +4,8 @@ import numpy as np
 import h5py
 from fuel.datasets import H5PYDataset
 from config import config
+import os
+import glob
 
 locals().update(config)
 network_mode = 0
@@ -11,22 +13,29 @@ network_mode = 0
 timeprocess = lambda x: x.replace(minute = (x.minute/5) * 5, second=0)
 date_parser = pd.tseries.tools.to_datetime
 
-df=pd.read_csv('./green_tripdata_2015-12.csv', index_col = False, parse_dates=['lpep_pickup_datetime'], date_parser=date_parser, sep=",")
-df.dropna()
-df = df[(df[u'Pickup_longitude'] > -74.06) & (df[u'Pickup_longitude'] < -73.76) &
-        (df[u'Pickup_latitude'] > 40.61) & (df[u'Pickup_latitude'] < 40.91)]
+path ='./data/' # use your path
+all_files = glob.glob(os.path.join(path, "*.csv"))
+print "total number of datasets: " + str(len(all_files)) + ", in " + str(len(all_files)) +" months"
+
+df_from_each_file = (pd.read_csv(f, index_col = False, parse_dates=['lpep_pickup_datetime'], date_parser=date_parser, sep=",") for f in all_files)
+df   = pd.concat(df_from_each_file)
+
+df = df[(df[u'Pickup_longitude'] > -74.2) & (df[u'Pickup_longitude'] < -73.65) &
+        (df[u'Pickup_latitude'] < 41.0) & (df[u'Pickup_latitude'] > 40.55)]
 
 df['Pickup_datetime'] = pd.Series(df['lpep_pickup_datetime'].apply(timeprocess), index = df.index)
-df['Pickup_longitude'] = df['Pickup_longitude'].apply(lambda x: 2 + (x + 73.915) * 7)
-df['Pickup_latitude'] = df['Pickup_latitude'].apply(lambda x: 2 + (x - 40.76) * 7)
+df['Pickup_longitude'] = df['Pickup_longitude'].apply(lambda x: 2.1 + (x + 73.925) * 4.0) # (-1.1, 1.1) + 2.1 = (1.0, 3.2)
+df['Pickup_latitude'] = df['Pickup_latitude'].apply(lambda x: 2.0 + (x - 40.775) * 4.0) # (-0.9, 0.9) + 2.0 = (1.1, 2.9)
 
 data = df[['Pickup_datetime','Pickup_longitude','Pickup_latitude']]
+print "total number of GPS traces: " + str(data.shape[0])
 
-startDateTime = datetime.datetime(2015, 12, 01, 0, 0, 0)
-endDateTime = datetime.datetime(2015, 12, 01, 0, 5, 0)
+startDateTime = datetime.datetime(2016, 03, 01, 0, 0, 0)
+endDateTime = datetime.datetime(2016, 03, 01, 0, 5, 0)
 sampleDataTime = endDateTime - startDateTime
-endDateTime = datetime.datetime(2016, 01, 01, 0, 0, 0)
+endDateTime = datetime.datetime(2016, 07, 01, 0, 0, 0)
 nsamples = (endDateTime - startDateTime).total_seconds() / 300;
+print "total number of time stamps: " + str(nsamples)
 
 
 in_size = len(input_columns)

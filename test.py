@@ -24,10 +24,10 @@ from matplotlib.widgets import Button
 locals().update(config)
 
 def my_longitude(ndarray):
-    return map(lambda x: (x - 2) / 7 - 73.915, ndarray)
+    return map(lambda x: (x - 2.1) / 4.0 - 73.925, ndarray)
 
 def my_latitude(ndarray):
-    return map(lambda x: (x - 2) / 7 + 40.76, ndarray)
+    return map(lambda x: (x - 2.0) / 4.0 + 40.775, ndarray)
 
 
 def sample(x_curr, fprop):
@@ -112,7 +112,10 @@ if __name__ == '__main__':
         #input_helper[i] = input_sec_network
 
         test = test[-1]
-        print test.shape
+        # print "longitude is:"
+        # print test[0]
+        # print "latitude is:"
+        # print test[1]
         test[0] = my_longitude(test[0])
         test[1] = my_latitude(test[1])
         output_mu[i, 0, :] = test[0]
