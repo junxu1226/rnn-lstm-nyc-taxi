@@ -98,19 +98,21 @@ if __name__ == '__main__':
     input_dataset = np.swapaxes(input_dataset,0,1)
     print input_dataset.shape
 
-    output_mu = np.empty((1000, 2, 100), dtype='float32')
+    output_mu = np.empty((100, 2, 100), dtype='float32')
 
     #sample_results = sample([x], fprop, [component_mean])
     #x_curr = [input_dataset[0,:,:]]
 
-    for i in range(1000):
+    for i in range(100):
         x_curr = input_dataset[:,i:i+1,:]
         #print x_curr
         test, newinitials = sample(x_curr, fprop)  # the shape of input_sec_network is (200,)
         ############  make data for the second network ########################
         #print input_helper[i].shape
         #input_helper[i] = input_sec_network
+
         test = test[-1]
+        print test.shape
         test[0] = my_longitude(test[0])
         test[1] = my_latitude(test[1])
         output_mu[i, 0, :] = test[0]
