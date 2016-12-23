@@ -98,7 +98,7 @@ if __name__ == '__main__':
     input_dataset = np.swapaxes(input_dataset,0,1)
     print input_dataset.shape
 
-    output_mu = np.empty((100, 2, 100), dtype='float32')
+    output_mu = np.empty((100, 2, 600), dtype='float32')
 
     #sample_results = sample([x], fprop, [component_mean])
     #x_curr = [input_dataset[0,:,:]]

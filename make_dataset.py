@@ -30,8 +30,8 @@ df['Pickup_latitude'] = df['Pickup_latitude'].apply(lambda x: 2.0 + (x - 40.775)
 data = df[['Pickup_datetime','Pickup_longitude','Pickup_latitude']]
 print "total number of GPS traces: " + str(data.shape[0])
 
-startDateTime = datetime.datetime(2016, 03, 01, 0, 0, 0)
-endDateTime = datetime.datetime(2016, 03, 01, 0, 5, 0)
+startDateTime = datetime.datetime(2016, 04, 01, 0, 0, 0)
+endDateTime = datetime.datetime(2016, 04, 01, 0, 5, 0)
 sampleDataTime = endDateTime - startDateTime
 endDateTime = datetime.datetime(2016, 07, 01, 0, 0, 0)
 nsamples = (endDateTime - startDateTime).total_seconds() / 300;
