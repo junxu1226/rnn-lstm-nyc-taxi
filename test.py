@@ -105,7 +105,7 @@ if __name__ == '__main__':
 
     for i in range(100):
         x_curr = input_dataset[:,i:i+1,:]
-        #print x_curr
+        print x_curr
         test, newinitials = sample(x_curr, fprop)  # the shape of input_sec_network is (200,)
         ############  make data for the second network ########################
         #print input_helper[i].shape

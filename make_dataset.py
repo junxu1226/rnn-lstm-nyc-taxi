@@ -48,12 +48,14 @@ for i in range(int(nsamples)):
     currentDataTime = startDateTime + i * sampleDataTime
     dataEachTime = data[data['Pickup_datetime'] == currentDataTime]
     eachPiece = np.array(dataEachTime[input_columns].as_matrix())
-    if len(eachPiece) >= (seq_length[network_mode]):
-        eachPiece = eachPiece[0:seq_length[network_mode], 0:seq_length[network_mode]]
-        inputs[i] = eachPiece
+    if len(eachPiece) >= (seq_length[network_mode] - 1):
+        eachPiece = eachPiece[0 : seq_length[network_mode] - 1, 0 : seq_length[network_mode] - 1]
+        fillEnd = np.zeros((1, in_size))
+        inputs[i] = np.concatenate((eachPiece, fillEnd))
     else:
-        fillZeros = np.zeros((seq_length[network_mode] - len(eachPiece), in_size))
-        inputs[i] = np.concatenate((fillZeros, eachPiece))
+        fillZeros = np.zeros((seq_length[network_mode] - 1 - len(eachPiece), in_size))
+        fillEnd = np.zeros((1, in_size))
+        inputs[i] = np.concatenate((np.concatenate((fillZeros, eachPiece)), fillEnd))
     outputs[i] = inputs[i]
     #inputs[i] = np.array(data[input_columns].as_matrix()[p:p + seq_length])
     #outputs[i] = np.array(data[output_columns].as_matrix()[p + 1:p + seq_length + 1])
