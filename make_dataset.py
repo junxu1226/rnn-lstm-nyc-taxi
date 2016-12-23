@@ -50,11 +50,11 @@ for i in range(int(nsamples)):
     eachPiece = np.array(dataEachTime[input_columns].as_matrix())
     if len(eachPiece) >= (seq_length[network_mode] - 1):
         eachPiece = eachPiece[0 : seq_length[network_mode] - 1, 0 : seq_length[network_mode] - 1]
-        fillEnd = np.zeros((1, in_size))
+        fillEnd = np.ones((1, in_size)) * 4
         inputs[i] = np.concatenate((eachPiece, fillEnd))
     else:
         fillZeros = np.zeros((seq_length[network_mode] - 1 - len(eachPiece), in_size))
-        fillEnd = np.zeros((1, in_size))
+        fillEnd = np.ones((1, in_size)) * 4
         inputs[i] = np.concatenate((np.concatenate((fillZeros, eachPiece)), fillEnd))
     outputs[i] = inputs[i]
     #inputs[i] = np.array(data[input_columns].as_matrix()[p:p + seq_length])
