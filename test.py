@@ -25,9 +25,9 @@ def my_latitude(ndarray):
     return map(lambda x: (x - 2.0) / 4.0 + 40.775, ndarray)
 
 
-def sample(x_curr, states_values, fprop):
+def sample(x_curr, fprop):
 
-    hiddens = fprop(x_curr, *states_values)
+    hiddens = fprop(x_curr)
     #print x_curr.shape
     #print x_curr[-1:,:,:]
     probs = hiddens.pop().astype(theano.config.floatX)
@@ -44,7 +44,7 @@ def sample(x_curr, states_values, fprop):
     # probs = probs / probs.sum()
     # sample = np.random.multinomial(1, probs).nonzero()[0][0]
     # print(sample)
-    return probs, hiddens
+    return probs
 
 
 if __name__ == '__main__':
@@ -85,11 +85,11 @@ if __name__ == '__main__':
 
 
     # print str(hiddens[0].shape.eval())
-    hiddens = [act[-1].flatten() for act in hiddens]
-    states_as_params = [tensor.vector(dtype=initial.dtype) for initial in initials]
-    zip(initials, states_as_params)
-    fprop = theano.function([x] + states_as_params, hiddens + [mu], givens=zip(initials, states_as_params))
-    states_values = [initial.get_value() for initial in initials]
+    # hiddens = [act[-1].flatten() for act in hiddens]
+    # states_as_params = [tensor.vhiddensector(dtype=initial.dtype) for initial in initials]
+    # zip(initials, states_as_params)
+    fprop = theano.function([x], [mu])
+    # states_values = [initial.get_value() for initial in initials]
 
     #predicted = np.array([1,1], dtype=theano.config.floatX)
     #x_curr = [[predicted]]
@@ -100,22 +100,22 @@ if __name__ == '__main__':
     input_dataset = np.swapaxes(input_dataset,0,1)
     print input_dataset.shape
 
-    output_mu = np.empty((10, 2, 600), dtype='float32')
+    output_mu = np.empty((100, 2, 400), dtype='float32')
 
     #sample_results = sample([x], fprop, [component_mean])
     #x_curr = [input_dataset[0,:,:]]
 
-    for i in range(10):
+    for i in range(30):
         x_curr = input_dataset[:,i:i+1,:]
-        # print x_curr
-        test, states_values = sample(x_curr, states_values, fprop)  # the shape of input_sec_network is (200,)
+        print x_curr.shape
+        test = sample(x_curr, fprop)  # the shape of input_sec_network is (200,)
         ############  make data for the second network ########################
         #print input_helper[i].shape
         #input_helper[i] = input_sec_network
         # for initial, newinitial in zip(initials, newinitials):
         #    initial.set_value(newinitial[-1].flatten())
         test = test[-1]
-        print test
+        # print test
         test[0] = my_longitude(test[0])
         test[1] = my_latitude(test[1])
         output_mu[i, 0, :] = test[0]
