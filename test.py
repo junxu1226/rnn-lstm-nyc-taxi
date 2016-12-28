@@ -6,20 +6,15 @@ from blocks import roles
 from blocks.model import Model
 from blocks.extensions import saveload
 from blocks.filter import VariableFilter
-from utils import MainLoop
+from utils import get_stream, track_best, MainLoop
 from config import config
 from model import nn_fprop
-from utils import get_stream
-import argparse
 import sys
 import os
 import pandas as pd
-import time
-import signal
-from pandas.parser import CParserError
 import matplotlib.pyplot as plt
-from fuel.datasets import H5PYDataset
 from matplotlib.widgets import Button
+import argparse
 
 locals().update(config)
 
@@ -30,9 +25,9 @@ def my_latitude(ndarray):
     return map(lambda x: (x - 2.0) / 4.0 + 40.775, ndarray)
 
 
-def sample(x_curr, fprop):
+def sample(x_curr, states_values, fprop):
 
-    hiddens = fprop(x_curr)
+    hiddens = fprop(x_curr, *states_values)
     #print x_curr.shape
     #print x_curr[-1:,:,:]
     probs = hiddens.pop().astype(theano.config.floatX)
@@ -64,12 +59,14 @@ if __name__ == '__main__':
 
     print('Loading model from {0}...'.format(save_path[network_mode]))
 
+    file = h5py.File(hdf5_file[network_mode], 'r')
+
     x = tensor.tensor3('features', dtype=theano.config.floatX)
     y = tensor.tensor3('targets', dtype=theano.config.floatX)
-    out_size = len(output_columns)
-    in_size = len(input_columns)
+    x = x.swapaxes(0,1)
+    y = y.swapaxes(0,1)
 
-    cost, mu, sigma, mixing, output_hiddens, mu_linear, sigma_linear, mixing_linear, cells = nn_fprop(x, y, in_size, out_size, hidden_size[network_mode], num_layers, layer_models[network_mode], 'MDN', training=False)
+    cost, mu, sigma, mixing, output_hiddens, mu_linear, sigma_linear, mixing_linear, cells = nn_fprop(x, y, in_size[network_mode], out_size[network_mode], hidden_size[network_mode], num_layers, layer_models[network_mode][0], 'MDN', training=False)
     main_loop = MainLoop(algorithm=None, data_stream=None, model=Model(cost),
                          extensions=[saveload.Load(save_path[network_mode])])
 
@@ -80,42 +77,43 @@ if __name__ == '__main__':
     print 'Model loaded. Building prediction function...'
     hiddens = []
     initials = []
-
     for i in range(num_layers):
         brick = [b for b in bin_model.get_top_bricks() if b.name == layer_models[network_mode][i] + str(i) + '-'][0]
         hiddens.extend(VariableFilter(theano_name=brick.name + '_apply_states')(bin_model.variables))
         hiddens.extend(VariableFilter(theano_name=brick.name + '_apply_cells')(cells))
         initials.extend(VariableFilter(roles=[roles.INITIAL_STATE])(brick.parameters))
 
-    fprop = theano.function([x], hiddens + [mu])
+
+    # print str(hiddens[0].shape.eval())
+    hiddens = [act[-1].flatten() for act in hiddens]
+    states_as_params = [tensor.vector(dtype=initial.dtype) for initial in initials]
+    zip(initials, states_as_params)
+    fprop = theano.function([x] + states_as_params, hiddens + [mu], givens=zip(initials, states_as_params))
+    states_values = [initial.get_value() for initial in initials]
 
     #predicted = np.array([1,1], dtype=theano.config.floatX)
     #x_curr = [[predicted]]
 
     #print(x[2].eval())
-    file = h5py.File(hdf5_file[network_mode], 'r')
+
     input_dataset = file['features']  # input_dataset.shape is (8928, 200, 2)
     input_dataset = np.swapaxes(input_dataset,0,1)
     print input_dataset.shape
 
-    output_mu = np.empty((100, 2, 600), dtype='float32')
+    output_mu = np.empty((10, 2, 600), dtype='float32')
 
     #sample_results = sample([x], fprop, [component_mean])
     #x_curr = [input_dataset[0,:,:]]
 
-    for i in range(100):
+    for i in range(10):
         x_curr = input_dataset[:,i:i+1,:]
-        #print x_curr
-        test, newinitials = sample(x_curr, fprop)  # the shape of input_sec_network is (200,)
+        test, states_values = sample(x_curr, states_values, fprop)  # the shape of input_sec_network is (200,)
         ############  make data for the second network ########################
         #print input_helper[i].shape
         #input_helper[i] = input_sec_network
-
+        # for initial, newinitial in zip(initials, newinitials):
+        #    initial.set_value(newinitial[-1].flatten())
         test = test[-1]
-        # print "longitude is:"
-        # print test[0]
-        # print "latitude is:"
-        # print test[1]
         test[0] = my_longitude(test[0])
         test[1] = my_latitude(test[1])
         output_mu[i, 0, :] = test[0]
@@ -131,10 +129,14 @@ fig, ax = plt.subplots()
 plt.subplots_adjust(bottom=0.2)
 
 longitude = input_dataset[:, index, 0]
-original_longitude = my_longitude(longitude[longitude > 0])
+longitude = longitude[longitude > 0]
+longitude = longitude[longitude < 4]
+original_longitude = my_longitude(longitude)
 
 latitude = input_dataset[:, index, 1]
-original_latitude = my_latitude(latitude[latitude > 0])
+latitude = latitude[latitude > 0]
+latitude = latitude[latitude < 4]
+original_latitude = my_latitude(latitude)
 #
 #
 l1, = plt.plot(original_longitude, original_latitude, 'bo')

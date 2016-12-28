@@ -210,14 +210,14 @@ def rnn_layer(in_size, dim, x, h, n, first_layer = False):
         else:
             rnn_input = h[n]
             linear = Linear(input_dim=dim, output_dim=dim, name='linear' + str(n) + '-' )
-    rnn = SimpleRecurrent(dim=dim, activation=Tanh(), name=layer_models[n] + str(n) + '-' )
+    rnn = SimpleRecurrent(dim=dim, activation=Tanh(), name=layer_models[network_mode][n] + str(n) + '-' )
     initialize([linear, rnn])
-    if layer_models[n] == 'rnn':
+    if layer_models[network_mode][n] == 'rnn':
         return rnn.apply(linear.apply(rnn_input))
-    elif layer_models[n] == 'mt_rnn':
+    elif layer_models[network_mode][n] == 'mt_rnn':
         return rnn.apply(linear.apply(rnn_input), time_scale=layer_resolutions[n], time_offset=layer_execution_time_offset[n])
 
-def lstm_layer(in_size, dim, x, h, n, first_layer = False):
+def lstm_layer(in_size, dim, x, h, n, first_layer):
     if connect_h_to_h == 'all-previous':
         if first_layer:
             lstm_input = x
@@ -248,14 +248,14 @@ def lstm_layer(in_size, dim, x, h, n, first_layer = False):
         else:
             lstm_input = h[n-1]
             linear = Linear(input_dim=dim, output_dim=dim * 4, name='linear' + str(n) + '-' )
-    lstm = LSTM(dim=dim , name=layer_models[network_mode][n] + str(n) + '-' )
+    lstm = LSTM(dim=dim , name=layer_models[network_mode][n] + str(n) + '-')
     initialize([linear, lstm])
     if layer_models[network_mode][n] == 'lstm':
         return lstm.apply(linear.apply(lstm_input))
     elif layer_models[network_mode][n] == 'mt_lstm':
         return lstm.apply(linear.apply(lstm_input), time_scale=layer_resolutions[n], time_offset=layer_execution_time_offset[n])
 
-def add_layer(model, i, in_size, h_size, x, h, cells, first_layer = False):
+def add_layer(model, i, in_size, h_size, x, h, cells, first_layer):
     if model == 'rnn' or model == 'mt_rnn':
         h.append(rnn_layer(in_size, h_size, x, h, i, first_layer))
     if model == 'gru':

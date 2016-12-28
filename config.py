@@ -1,9 +1,9 @@
 config = {}
 
 config['network_mode'] = 0
-config['batch_size'] = [100, 12]  # number of samples taken per each update. You might want to increase it to make the training faster, but you might not get the same result.
+config['batch_size'] = [100, 100]  # number of samples taken per each update. You might want to increase it to make the training faster, but you might not get the same result.
 config['hidden_size'] = [600, 600]
-config['learning_rate'] = [.0001, .0001]
+config['learning_rate'] = [.00001, .00001]
 config['learning_rate_decay'] = [0.999, 0.999]  # set to 0 to not decay learning rate
 config['decay_rate'] = [0.999, 0.999]  # decay rate for rmsprop
 config['step_clipping'] = [10.0, 10.0]  # clip norm of gradients at this value
