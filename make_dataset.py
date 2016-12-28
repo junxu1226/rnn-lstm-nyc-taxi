@@ -30,8 +30,8 @@ df['Pickup_latitude'] = df['Pickup_latitude'].apply(lambda x: 2.0 + (x - 40.775)
 data = df[['Pickup_datetime','Pickup_longitude','Pickup_latitude']]
 print "total number of GPS traces: " + str(data.shape[0])
 
-startDateTime = datetime.datetime(2016, 04, 01, 0, 0, 0)
-endDateTime = datetime.datetime(2016, 04, 01, 0, 5, 0)
+startDateTime = datetime.datetime(2016, 05, 01, 0, 0, 0)
+endDateTime = datetime.datetime(2016, 05, 01, 0, 5, 0)
 sampleDataTime = endDateTime - startDateTime
 endDateTime = datetime.datetime(2016, 07, 01, 0, 0, 0)
 nsamples = (endDateTime - startDateTime).total_seconds() / 300;
@@ -41,7 +41,7 @@ print "total number of time stamps: " + str(nsamples)
 in_size = len(input_columns)
 out_size = len(output_columns)
 inputs = np.empty((nsamples, seq_length[network_mode], in_size), dtype='float32')
-outputs = np.empty((nsamples, seq_length[network_mode], out_size), dtype='float32')
+outputs = np.zeros((nsamples, seq_length[network_mode], out_size), dtype='float32')
 
 for i in range(int(nsamples)):
 
@@ -56,7 +56,10 @@ for i in range(int(nsamples)):
         fillZeros = np.zeros((seq_length[network_mode] - 1 - len(eachPiece), in_size))
         fillEnd = np.ones((1, in_size)) * 4
         inputs[i] = np.concatenate((np.concatenate((fillZeros, eachPiece)), fillEnd))
-    outputs[i] = inputs[i]
+
+
+for j in range(1, int(nsamples)):
+    outputs[j-1] = inputs[j]
     #inputs[i] = np.array(data[input_columns].as_matrix()[p:p + seq_length])
     #outputs[i] = np.array(data[output_columns].as_matrix()[p + 1:p + seq_length + 1])
 

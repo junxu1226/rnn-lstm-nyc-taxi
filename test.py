@@ -107,6 +107,7 @@ if __name__ == '__main__':
 
     for i in range(10):
         x_curr = input_dataset[:,i:i+1,:]
+        # print x_curr
         test, states_values = sample(x_curr, states_values, fprop)  # the shape of input_sec_network is (200,)
         ############  make data for the second network ########################
         #print input_helper[i].shape
@@ -114,6 +115,7 @@ if __name__ == '__main__':
         # for initial, newinitial in zip(initials, newinitials):
         #    initial.set_value(newinitial[-1].flatten())
         test = test[-1]
+        print test
         test[0] = my_longitude(test[0])
         test[1] = my_latitude(test[1])
         output_mu[i, 0, :] = test[0]
