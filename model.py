@@ -45,7 +45,8 @@ def MDN_output_layer(x, h, y, in_size, out_size, hidden_size, pred):
     mixing = e_x / e_x.sum(axis=1, keepdims=True)
     # calculate cost
     nonzero_mask = (y.dimshuffle(0, 1, 2, 'x').round().clip(.1,.6)-.1)*2
-    exponent = -0.5 * T.inv(sigma) * T.sum(nonzero_mask*(y.dimshuffle(0, 1, 2, 'x') - mu.dimshuffle('x', 0, 1, 2)) ** 2, axis=2)
+    # y.shape = (seq, batch, features) mu.shape = (batch, features, component)
+    exponent = -0.5 * T.inv(sigma) * T.sum((nonzero_mask*(y.dimshuffle(0, 1, 2, 'x') - mu.dimshuffle('x', 0, 1, 2))) ** 2, axis=2)
     normalizer = (2 * np.pi * sigma)
     exponent = exponent + T.log(mixing) - (out_size * .5) * T.log(normalizer)
     # LogSumExp(x)
@@ -56,7 +57,7 @@ def MDN_output_layer(x, h, y, in_size, out_size, hidden_size, pred):
     # mean over the batch, mean over sequence
     cost = -T.mean(log_gauss, axis=1).mean()
 
-    output_hiddens = hiddens[-1,:,:]
+    output_hiddens = hiddens
     #shared_hiddens.set_value(hiddens[-1,:,:])
     return cost, mu, sigma, mixing, output_hiddens, mu_linear, sigma_linear, mixing_linear
 
@@ -210,14 +211,14 @@ def rnn_layer(in_size, dim, x, h, n, first_layer = False):
         else:
             rnn_input = h[n]
             linear = Linear(input_dim=dim, output_dim=dim, name='linear' + str(n) + '-' )
-    rnn = SimpleRecurrent(dim=dim, activation=Tanh(), name=layer_models[network_mode][n] + str(n) + '-' )
+    rnn = SimpleRecurrent(dim=dim, activation=Tanh(), name=layer_models[n] + str(n) + '-' )
     initialize([linear, rnn])
-    if layer_models[network_mode][n] == 'rnn':
+    if layer_models[n] == 'rnn':
         return rnn.apply(linear.apply(rnn_input))
-    elif layer_models[network_mode][n] == 'mt_rnn':
+    elif layer_models[n] == 'mt_rnn':
         return rnn.apply(linear.apply(rnn_input), time_scale=layer_resolutions[n], time_offset=layer_execution_time_offset[n])
 
-def lstm_layer(in_size, dim, x, h, n, first_layer):
+def lstm_layer(in_size, dim, x, h, n, first_layer = False):
     if connect_h_to_h == 'all-previous':
         if first_layer:
             lstm_input = x
@@ -248,14 +249,14 @@ def lstm_layer(in_size, dim, x, h, n, first_layer):
         else:
             lstm_input = h[n-1]
             linear = Linear(input_dim=dim, output_dim=dim * 4, name='linear' + str(n) + '-' )
-    lstm = LSTM(dim=dim , name=layer_models[network_mode][n] + str(n) + '-')
+    lstm = LSTM(dim=dim , name=layer_models[network_mode][n] + str(n) + '-' )
     initialize([linear, lstm])
     if layer_models[network_mode][n] == 'lstm':
         return lstm.apply(linear.apply(lstm_input))
     elif layer_models[network_mode][n] == 'mt_lstm':
         return lstm.apply(linear.apply(lstm_input), time_scale=layer_resolutions[n], time_offset=layer_execution_time_offset[n])
 
-def add_layer(model, i, in_size, h_size, x, h, cells, first_layer):
+def add_layer(model, i, in_size, h_size, x, h, cells, first_layer = False):
     if model == 'rnn' or model == 'mt_rnn':
         h.append(rnn_layer(in_size, h_size, x, h, i, first_layer))
     if model == 'gru':

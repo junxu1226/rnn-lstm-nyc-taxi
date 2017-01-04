@@ -1,8 +1,8 @@
 config = {}
 
 config['network_mode'] = 0
-config['batch_size'] = [100, 12]  # number of samples taken per each update. You might want to increase it to make the training faster, but you might not get the same result.
-config['hidden_size'] = [400, 600]
+config['batch_size'] = [100, 10]  # number of samples taken per each update. You might want to increase it to make the training faster, but you might not get the same result.
+config['hidden_size'] = [600, 200]
 config['learning_rate'] = [.0001, .0001]
 config['learning_rate_decay'] = [0.999, 0.999]  # set to 0 to not decay learning rate
 config['decay_rate'] = [0.999, 0.999]  # decay rate for rmsprop
@@ -16,8 +16,8 @@ config['num_layers'] = len(config['layer_models'][config['network_mode']])
 config['input_columns'] = ['Pickup_longitude', 'Pickup_latitude']
 config['output_columns'] = ['Pickup_longitude', 'Pickup_latitude']
 
-config['in_size'] = [len(config['input_columns']), 200]
-config['out_size'] = [len(config['output_columns']), 200]
+config['in_size'] = [len(config['input_columns']), 600]
+config['out_size'] = [len(config['output_columns']), 600]
 
 
 # parameters of data augmentation
@@ -67,7 +67,7 @@ config['connect_h_to_o'] = True
 config['out_round_decimal'] = 2
 
 # parameters of MDN
-config['components_size'] = [400, 600]
+config['components_size'] = [600, 600]
 config['seed'] = 66478
 
 # outputting one dimension at a time parameters - Predicting only one dimension of the output at a time. The sequence length would be multiplied by the output dimension. Seems slow!
