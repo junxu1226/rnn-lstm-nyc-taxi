@@ -143,7 +143,7 @@ if __name__ == '__main__':
     #sample_results = sample([x], fprop, [component_mean])
     #x_curr = [input_dataset[0,:,:]]
 
-    for i in range(100):
+    for i in range(50):
         x_curr = input_dataset[:,i:i+1,:]
         print x_curr.shape
         mu_ = sample(x_curr, fprop_mu)  # the shape of input_sec_network is (200,)
@@ -155,8 +155,8 @@ if __name__ == '__main__':
         output_mu[i, 0, :] = my_longitude(mu_[0])
         output_mu[i, 1, :] = my_latitude(mu_[1])
 
-        output_sigma[i, :] = sigma_[-1]
-        output_mixing[i, :] = mixing_[-1]
+        # output_sigma[i, :] = sigma_[-1]
+        # output_mixing[i, :] = mixing_[-1]
 
         # for initial, newinitial in zip(initials, newinitials):
         #    initial.set_value(newinitial[-1].flatten())
@@ -185,21 +185,21 @@ original_latitude = my_latitude(latitude)
 l1, = plt.plot(original_longitude, original_latitude, 'bo')
 l2, = plt.plot(output_mu[index, 0, :], output_mu[index, 1, :], 'ro')
 # ax.axes([-74.2, -73.65, 40.55, 41.0])
-g = gengmm(600)
-g.means_=output_mu[index,:,:]
-g.weights_=output_mixing[index,:]
-g.covariances_ = output_sigma[index,:]
-
-delta = 0.01
-x = np.arange(-74.2, -73.65, delta)
-y = np.arange(40.55, 41.0, delta)
-X, Y = np.meshgrid(x, y)
-
-i=0
-Z2= g.weights_[i]*gaussian_2d(X, Y, g.means_[0, i], g.means_[1, i], g.covariances_[i])
-
-for i in xrange(1,600):
-    Z2 = Z2+ g.weights_[i]*gaussian_2d(X, Y, g.means_[0, i], g.means_[1, i], g.covariances_[i])
+# g = gengmm(600)
+# g.means_=output_mu[index,:,:]
+# g.weights_=output_mixing[index,:]
+# g.covariances_ = output_sigma[index,:]
+#
+# delta = 0.01
+# x = np.arange(-74.2, -73.65, delta)
+# y = np.arange(40.55, 41.0, delta)
+# X, Y = np.meshgrid(x, y)
+#
+# i=0
+# Z2= g.weights_[i]*gaussian_2d(X, Y, g.means_[0, i], g.means_[1, i], g.covariances_[i])
+#
+# for i in xrange(1,600):
+#     Z2 = Z2+ g.weights_[i]*gaussian_2d(X, Y, g.means_[0, i], g.means_[1, i], g.covariances_[i])
 
 # c =  plt.contour(X, Y, Z2)
 # l2 = plt.clabel(c)
@@ -231,21 +231,21 @@ class Index(object):
         l1.set_xdata(original_longitude)
         l1.set_ydata(original_latitude)
 
-        g.means_=output_mu[self.index,:,:]
-        g.covariances_=output_sigma[self.index,:]
-        g.weights_=output_mixing[self.index,:]
-        # g = gengmm(600, 2, output_mu[self.index], output_sigma[self.index], output_mixing[self.index])
-        i=0
-        Z2= g.weights_[i]*gaussian_2d(X, Y, g.means_[0, i], g.means_[1, i], g.covariances_[i])
-        for i in xrange(1,600):
-            Z2 = Z2+ g.weights_[i]*gaussian_2d(X, Y, g.means_[0, i], g.means_[1, i], g.covariances_[i])
-        ax.contour(X, Y, Z2)
+        # g.means_=output_mu[self.index,:,:]
+        # g.covariances_=output_sigma[self.index,:]
+        # g.weights_=output_mixing[self.index,:]
+        # # g = gengmm(600, 2, output_mu[self.index], output_sigma[self.index], output_mixing[self.index])
+        # i=0
+        # Z2= g.weights_[i]*gaussian_2d(X, Y, g.means_[0, i], g.means_[1, i], g.covariances_[i])
+        # for i in xrange(1,600):
+        #     Z2 = Z2+ g.weights_[i]*gaussian_2d(X, Y, g.means_[0, i], g.means_[1, i], g.covariances_[i])
+        # ax.contour(X, Y, Z2)
         # time.sleep(1)
         l2.set_xdata(output_mu[self.index, 0, :])
         l2.set_ydata(output_mu[self.index, 1, :])
         # plt.axes([-74.2, -73.65, 40.55, 41.0])
         plt.draw()
-        ax.collections = []
+        # ax.collections = []
 
 
 # for i in xrange(10):

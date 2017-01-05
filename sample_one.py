@@ -48,7 +48,7 @@ def sample(x_curr, fprop):
     # probs = probs / probs.sum()
     # sample = np.random.multinomial(1, probs).nonzero()[0][0]
     # print(sample)
-    return probs, hiddens
+    return probs
 
 
 if __name__ == '__main__':
@@ -63,12 +63,15 @@ if __name__ == '__main__':
 
     print('Loading model from {0}...'.format(save_path[network_mode]))
 
+
+    file = h5py.File(hdf5_file[network_mode], 'r')
+
     x = tensor.tensor3('features', dtype=theano.config.floatX)
     y = tensor.tensor3('targets', dtype=theano.config.floatX)
-    out_size = len(output_columns)
-    in_size = len(input_columns)
+    x = x.swapaxes(0,1)
+    y = y.swapaxes(0,1)
 
-    cost, mu, sigma, mixing, output_hiddens, mu_linear, sigma_linear, mixing_linear, cells = nn_fprop(x, y, in_size, out_size, hidden_size[network_mode], num_layers, layer_models[network_mode], 'MDN', training=False)
+    cost, mu, sigma, mixing, output_hiddens, mu_linear, sigma_linear, mixing_linear, cells = nn_fprop(x, y, in_size[network_mode], out_size[network_mode], hidden_size[network_mode], num_layers, layer_models[network_mode][0], 'MDN', training=False)
     main_loop = MainLoop(algorithm=None, data_stream=None, model=Model(cost),
                          extensions=[saveload.Load(save_path[network_mode])])
 
@@ -86,25 +89,25 @@ if __name__ == '__main__':
         hiddens.extend(VariableFilter(theano_name=brick.name + '_apply_cells')(cells))
         initials.extend(VariableFilter(roles=[roles.INITIAL_STATE])(brick.parameters))
 
-    fprop = theano.function([x], hiddens + [output_hiddens])
+    fprop = theano.function([x], [output_hiddens])  #the output_hiddens sahpe: 1*1200
 
     #predicted = np.array([1,1], dtype=theano.config.floatX)
     #x_curr = [[predicted]]
 
     #print(x[2].eval())
-    file = h5py.File(hdf5_file[network_mode], 'r')
+    # file = h5py.File(hdf5_file[network_mode], 'r')
     input_dataset = file['features']  # input_dataset.shape is (8928, 200, 2)
     input_dataset = np.swapaxes(input_dataset,0,1)
     print input_dataset.shape
 
 
     ############### for second network #####################
-    in_size = hidden_size[network_mode]
-    out_size = hidden_size[network_mode]
+    in_size = seq_length[0]
+    out_size = seq_length[0]
     nsamples = len(input_dataset[-1, :, -1])
     # inputs = np.empty((nsamples, seq_length, in_size), dtype='float32')
-    inputs = np.empty((nsamples/24, 24, in_size), dtype='float32')
-    outputs = np.empty((nsamples/24, 24, out_size), dtype='float32')
+    inputs = np.empty((nsamples/24, 24, in_size, num_layers * components_size[0]), dtype='float32')
+    outputs = np.empty((nsamples/24, 24, out_size, num_layers * components_size[0]), dtype='float32')
     print nsamples
 
 
@@ -113,11 +116,12 @@ if __name__ == '__main__':
 
     for i in range(nsamples):
         x_curr = input_dataset[:,i:i+1,:]
-        #print x_curr
-        input_sec_network, newinitials = sample(x_curr, fprop)  # the shape of input_sec_network is (200,)
+        print x_curr.shape
+        input_sec_network = sample(x_curr, fprop)
+        print input_sec_network.shape
         ############  make data for the second network ########################
         #print input_helper[i].shape
-        inputs[i/24, i%24, :] = input_sec_network
+        inputs[i/24, i%24, :] = input_sec_network[-1]
         #input_helper[i] = input_sec_network
 
         # for initial, newinitial in zip(initials, newinitials):
@@ -138,10 +142,10 @@ if __name__ == '__main__':
     targets.dims[0].label = 'batch'
     targets.dims[1].label = 'sequence'
 
-    nsamples_train = int(372 * train_size[network_mode])
+    nsamples_train = int(nsamples/24 * train_size[network_mode])
     split_dict = {
         'train': {'features': (0, nsamples_train), 'targets': (0, nsamples_train)},
-        'test': {'features': (nsamples_train, 372), 'targets': (nsamples_train, 372)}}
+        'test': {'features': (nsamples_train, nsamples/24), 'targets': (nsamples_train, nsamples/24)}}
 
     f.attrs['split'] = H5PYDataset.create_split_array(split_dict)
     f.flush()

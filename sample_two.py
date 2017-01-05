@@ -74,9 +74,15 @@ if __name__ == '__main__':
 
     # loading the first model
     network_mode = 0
-    print('Loading model from {0}...'.format(save_path[0]))
+
+    print('Loading model from {0}...'.format(save_path[network_mode]))
+    # file = h5py.File(hdf5_file[network_mode], 'r')
+
     x = tensor.tensor3('features', dtype=theano.config.floatX)
     y = tensor.tensor3('targets', dtype=theano.config.floatX)
+    x = x.swapaxes(0,1)
+    y = y.swapaxes(0,1)
+
     cost, mu, sigma, mixing, output_hiddens, mu_linear, sigma_linear, mixing_linear, cells = nn_fprop(x, y, in_size[0], out_size[0], hidden_size[0], len(layer_models[0]), layer_models[0], 'MDN', training=False)
     main_loop = MainLoop(algorithm=None, data_stream=None, model=Model(cost),
                          extensions=[saveload.Load(save_path[0])])
@@ -88,16 +94,6 @@ if __name__ == '__main__':
     print 'first model loaded. Building prediction function...'
     hiddens = []
     initials = []
-    # h = []
-    #
-    # sigma_linear = Linear(name='sigma_linear', input_dim=200, output_dim=200)
-    # initialize([sigma_linear])
-    # brick_name = 'sigma_linear'
-    # #
-    # h = VariableFilter(roles=[roles.PARAMETER], bricks=[brick_name])(bin_model_one.variables)
-    # sigma_linear.allocate(h)
-    # sigma = h.apply(output_hiddens)
-    # sigma = tensor.nnet.softplus(sigma)
 
 
     for i in range(len(layer_models[0])):
@@ -106,13 +102,13 @@ if __name__ == '__main__':
         hiddens.extend(VariableFilter(theano_name=brick.name + '_apply_cells')(cells))
         initials.extend(VariableFilter(roles=[roles.INITIAL_STATE])(brick.parameters))
 
-    fprop_x_hidden = theano.function([x], hiddens + [output_hiddens])
+    fprop_x_hidden = theano.function([x], [output_hiddens])
     #fprop_x_sigma = theano.function([x], hiddens + [sigma])
     #mu_linear = Linear(name='mu_linear' + '-', input_dim=hidden_size[0], output_dim=2 * components_size[0])
     # sigma_linear = Linear(name = 'sigma_linear' + '-', input_dim = hidden_size[0], output_dim = components_size[0])
     # initialize([sigma_linear])
-    mu = mu_linear.apply(output_hiddens)
-    mu = mu.reshape((mu.shape[0], 2, 100))
+    mu = mu_linear.apply(output_hiddens)[-1,:,:]
+    mu = mu.reshape((mu.shape[0], 2, components_size[0]))
     # sigma = sigma_linear.apply(output_hiddens)
     # sigma = T.nnet.softplus(sigma)
     # print mu_linear.parameters
@@ -130,6 +126,8 @@ if __name__ == '__main__':
     x2 = tensor.tensor3('features', dtype=theano.config.floatX)
     y2 = tensor.tensor3('targets', dtype=theano.config.floatX)
 
+    x2 = x2.swapaxes(0,1)
+    y2 = y2.swapaxes(0,1)
 
     y_2, cost_2, cells = nn_fprop(x2, y2, in_size[1], out_size[1], hidden_size[1], len(layer_models[1]), layer_models[1], 'SEC_MDN', training=False)
     main_loop = MainLoop(algorithm=None, data_stream=None, model=Model(cost_2),
@@ -160,9 +158,9 @@ input_dataset = np.swapaxes(input_dataset,0,1)
 nsamples = len(input_dataset[-1, :, -1])
 print nsamples
 
-output_mu = np.empty((200, 2, 100), dtype='float32')
-myfile = open('output.csv', 'wb')
-wr = csv.writer(myfile)
+output_mu = np.empty((200, 2, components_size[network_mode]), dtype='float32')
+# myfile = open('output.csv', 'wb')
+# wr = csv.writer(myfile)
 for i in range(200):
     x_curr = input_dataset[:,i:i+1,:]
     #print x_curr
@@ -194,16 +192,24 @@ fig, ax = plt.subplots()
 plt.subplots_adjust(bottom=0.2)
 
 longitude = input_dataset[:, index, 0]
-original_longitude = my_longitude(longitude[longitude > 0])
+longitude = longitude[longitude > 0.5]
+longitude = longitude[longitude < 4]
+original_longitude = my_longitude(longitude)
 
 latitude = input_dataset[:, index, 1]
-original_latitude = my_latitude(latitude[latitude > 0])
+latitude = latitude[latitude > 0.5]
+latitude = latitude[latitude < 4]
+original_latitude = my_latitude(latitude)
 #
 #
 l1, = plt.plot(original_longitude, original_latitude, 'bo')
 #
-#plt.axis([-74.06, -73.77, 40.61, 40.91])
+plt.axis([-74.2, -73.65, 40.55, 41.0])
 l2, = plt.plot(output_mu[index, 0, :], output_mu[index, 1, :], 'ro')
+
+plt.title("Prediction Demo")
+plt.xlabel("longitude")
+plt.ylabel("latitude")
 
 
 
@@ -215,10 +221,10 @@ class Index(object):
         #plt.plot(output_mu[self.index, 0, :], output_mu[self.index, 1, :], 'ro')
 
         longitude = input_dataset[:, self.index, 0]
-        original_longitude = my_longitude(longitude[longitude > 0])
+        original_longitude = my_longitude(longitude[longitude > 0.5])
 
         latitude = input_dataset[:, self.index, 1]
-        original_latitude = my_latitude(latitude[latitude > 0])
+        original_latitude = my_latitude(latitude[latitude > 0.5])
 
         l1.set_xdata(original_longitude)
         l1.set_ydata(original_latitude)

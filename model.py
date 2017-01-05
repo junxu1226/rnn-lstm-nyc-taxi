@@ -6,7 +6,7 @@ from theano.tensor.shared_randomstreams import RandomStreams
 from blocks import initialization
 from blocks.bricks import Linear, Rectifier, cost
 from blocks.bricks.parallel import Fork
-from blocks.bricks.recurrent import GatedRecurrent, LSTM, SimpleRecurrent
+from architectures import GatedRecurrent, LSTM, LN_LSTM, SimpleRecurrent
 from blocks.bricks.cost import AbsoluteError, SquaredError
 from config import config
 from blocks.bricks import (MLP, Logistic, Initializable, FeedforwardSequence, Tanh,
@@ -35,11 +35,12 @@ def MDN_output_layer(x, h, y, in_size, out_size, hidden_size, pred):
     sigma_linear = Linear(name='sigma_linear' + str(pred), input_dim=hidden_out_size, output_dim=components_size[network_mode])
     mixing_linear = Linear(name='mixing_linear' + str(pred), input_dim=hidden_out_size, output_dim=components_size[network_mode])
     initialize([mu_linear, sigma_linear, mixing_linear])
-    mu = mu_linear.apply(hiddens)[-1,:,:]
+    last_hiddens = hiddens[-1,:,:]
+    mu = mu_linear.apply(last_hiddens)
     mu = mu.reshape((mu.shape[0], out_size, components_size[network_mode]))
-    sigma = sigma_linear.apply(hiddens)[-1,:,:]
+    sigma = sigma_linear.apply(last_hiddens)
     sigma = T.nnet.softplus(sigma)
-    mixing = mixing_linear.apply(hiddens)[-1,:,:]
+    mixing = mixing_linear.apply(last_hiddens)
     # apply softmax to mixing
     e_x = T.exp(mixing - mixing.max(axis=1, keepdims=True))
     mixing = e_x / e_x.sum(axis=1, keepdims=True)
@@ -57,7 +58,7 @@ def MDN_output_layer(x, h, y, in_size, out_size, hidden_size, pred):
     # mean over the batch, mean over sequence
     cost = -T.mean(log_gauss, axis=1).mean()
 
-    output_hiddens = hiddens
+    output_hiddens = last_hiddens
     #shared_hiddens.set_value(hiddens[-1,:,:])
     return cost, mu, sigma, mixing, output_hiddens, mu_linear, sigma_linear, mixing_linear
 
