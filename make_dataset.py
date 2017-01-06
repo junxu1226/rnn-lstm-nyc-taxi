@@ -56,14 +56,11 @@ for i in range(int(nsamples)):
         fillZeros = np.zeros((seq_length[network_mode] - 1 - len(eachPiece), in_size))
         fillEnd = np.ones((1, in_size)) * 4
         inputs[i] = np.concatenate((np.concatenate((fillZeros, eachPiece)), fillEnd))
+    outputs[i] = inputs[i]
 
-
-for j in range(1, int(nsamples)):
-    outputs[j-1] = inputs[j]
     #inputs[i] = np.array(data[input_columns].as_matrix()[p:p + seq_length])
     #outputs[i] = np.array(data[output_columns].as_matrix()[p + 1:p + seq_length + 1])
 
-print 'Data time steps: ', len(data)
 print 'inputs shape:', inputs.shape
 print 'outputs shape:', outputs.shape
 

@@ -46,14 +46,15 @@ def MDN_output_layer(x, h, y, in_size, out_size, hidden_size, pred):
     mixing = e_x / e_x.sum(axis=1, keepdims=True)
     # calculate cost
     nonzero_mask = (y.dimshuffle(0, 1, 2, 'x').round().clip(.1,.6)-.1)*2
+
     # y.shape = (seq, batch, features) mu.shape = (batch, features, component)
     exponent = -0.5 * T.inv(sigma) * T.sum((nonzero_mask*(y.dimshuffle(0, 1, 2, 'x') - mu.dimshuffle('x', 0, 1, 2))) ** 2, axis=2)
     normalizer = (2 * np.pi * sigma)
     exponent = exponent + T.log(mixing) - (out_size * .5) * T.log(normalizer)
     # LogSumExp(x)
-    max_exponent = T.max(exponent , axis=1, keepdims=True)
+    max_exponent = T.max(exponent , axis=2, keepdims=True)
     mod_exponent = exponent - max_exponent
-    gauss_mix = T.sum(T.exp(mod_exponent), axis=1, keepdims=True)
+    gauss_mix = T.sum(T.exp(mod_exponent), axis=2, keepdims=True)
     log_gauss = T.log(gauss_mix) + max_exponent
     # mean over the batch, mean over sequence
     cost = -T.mean(log_gauss, axis=1).mean()

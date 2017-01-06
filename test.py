@@ -154,7 +154,7 @@ if __name__ == '__main__':
 
         output_mu[i, 0, :] = my_longitude(mu_[0])
         output_mu[i, 1, :] = my_latitude(mu_[1])
-
+        # 
         # output_sigma[i, :] = sigma_[-1]
         # output_mixing[i, :] = mixing_[-1]
 
@@ -184,8 +184,8 @@ original_latitude = my_latitude(latitude)
 #
 l1, = plt.plot(original_longitude, original_latitude, 'bo')
 l2, = plt.plot(output_mu[index, 0, :], output_mu[index, 1, :], 'ro')
-# ax.axes([-74.2, -73.65, 40.55, 41.0])
-# g = gengmm(600)
+
+# g = gengmm(400)
 # g.means_=output_mu[index,:,:]
 # g.weights_=output_mixing[index,:]
 # g.covariances_ = output_sigma[index,:]
@@ -198,7 +198,7 @@ l2, = plt.plot(output_mu[index, 0, :], output_mu[index, 1, :], 'ro')
 # i=0
 # Z2= g.weights_[i]*gaussian_2d(X, Y, g.means_[0, i], g.means_[1, i], g.covariances_[i])
 #
-# for i in xrange(1,600):
+# for i in xrange(1,400):
 #     Z2 = Z2+ g.weights_[i]*gaussian_2d(X, Y, g.means_[0, i], g.means_[1, i], g.covariances_[i])
 
 # c =  plt.contour(X, Y, Z2)
@@ -220,7 +220,6 @@ class Index(object):
 
     def next(self, event):
         self.index += 1
-        #plt.plot(output_mu[self.index, 0, :], output_mu[self.index, 1, :], 'ro')
 
         longitude = input_dataset[:, self.index, 0]
         original_longitude = my_longitude(longitude[longitude > 0.5])
@@ -248,19 +247,6 @@ class Index(object):
         # ax.collections = []
 
 
-# for i in xrange(10):
-#         g.means_=output_mu[i,:,:]
-#         g.covariances_=output_sigma[i,:]
-#         g.weights_=output_mixing[i,:]
-#         # g = gengmm(600, 2, output_mu[self.index], output_sigma[self.index], output_mixing[self.index])
-#         i=0
-#         Z2= g.weights_[i]*gaussian_2d(X, Y, g.means_[0, i], g.means_[1, i], g.covariances_[i])
-#         for i in xrange(1,600):
-#             Z2 = Z2+ g.weights_[i]*gaussian_2d(X, Y, g.means_[0, i], g.means_[1, i], g.covariances_[i])
-#         ax.contour(X, Y, Z2)
-#         plt.draw()
-#         time.sleep(1)
-#         ax.collections = []
 callback = Index()
 axnext = plt.axes([0.81, 0.05, 0.1, 0.075])
 bnext = Button(axnext, 'Next')

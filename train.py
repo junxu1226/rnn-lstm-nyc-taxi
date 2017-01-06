@@ -44,9 +44,9 @@ if dropout[network_mode] > 0:
     cost = cg.outputs[0]
 
 # Learning algorithm
-# step_rules = [RMSProp(learning_rate=learning_rate[network_mode], decay_rate=decay_rate[network_mode]),
-#               StepClipping(step_clipping[network_mode])]
-step_rules = [Adam(learning_rate=learning_rate[network_mode]), StepClipping(step_clipping[network_mode])]
+step_rules = [RMSProp(learning_rate=learning_rate[network_mode], decay_rate=decay_rate[network_mode]),
+              StepClipping(step_clipping[network_mode])]
+# step_rules = [Adam(learning_rate=learning_rate[network_mode]), StepClipping(step_clipping[network_mode])]
 algorithm = GradientDescent(cost=cost, parameters=cg.parameters,
                             step_rule=CompositeRule(step_rules))
 
