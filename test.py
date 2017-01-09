@@ -27,25 +27,14 @@ def my_latitude(ndarray):
     return map(lambda x: (x - 2.0) / 4.0 + 40.775, ndarray)
 
 
-def sample(x_curr, fprop):
+def sample(x_curr, mask, fprop):
 
-    hiddens = fprop(x_curr)
+    hiddens = fprop(x_curr, mask)
     #print x_curr.shape
     #print x_curr[-1:,:,:]
     probs = hiddens.pop().astype(theano.config.floatX)
     # probs = probs[-1,-1].astype('float32')
     #print "the output shape is: "
-    #print probs.shape
-    #print "getting the last element..."
-    #probs = probs[-1,:].astype('float32')
-    #print probs
-    #print probs.shape
-    #print my_longitude(probs[0])
-    #print my_latitude(probs[1])
-    #hierarchy_values = [None] * (len(predict_funcs) + 1)
-    # probs = probs / probs.sum()
-    # sample = np.random.multinomial(1, probs).nonzero()[0][0]
-    # print(sample)
     return probs
 
 def gaussian_2d(x, y, x0, y0, sig):
@@ -64,18 +53,6 @@ def plotGMM(g, n, pt):
     y = np.arange(40.55, 41.0, delta)
     X, Y = np.meshgrid(x, y)
 
-    # if pt == 1:
-    #     for i in xrange(n):
-    #         Z1 = gaussian_2d(X, Y, g.means_[0, i], g.means_[1, i], g.covars_[i])
-    #         plt.contour(X, Y, Z1, linewidths=0.5)
-
-    #print g.means_
-    # plt.plot(g.means_[0][0],g.means_[0][1], '+', markersize=13, mew=3)
-    # plt.plot(g.means_[1][0],g.means_[1][1], '+', markersize=13, mew=3)
-    # plt.plot(g.means_[2][0],g.means_[2][1], '+', markersize=13, mew=3)
-    # plt.plot(g.means_[3][0],g.means_[3][1], '+', markersize=13, mew=3)
-
-    # plot the GMM with mixing parameters (weights)
     i=0
     Z2= g.weights_[i]*gaussian_2d(X, Y, g.means_[0, i], g.means_[1, i], g.covariances_[i])
     for i in xrange(1,n):
@@ -94,14 +71,33 @@ if __name__ == '__main__':
 
     print('Loading model from {0}...'.format(save_path[network_mode]))
 
-    file = h5py.File(hdf5_file[network_mode], 'r')
 
-    x = tensor.tensor3('features', dtype=theano.config.floatX)
-    y = tensor.tensor3('targets', dtype=theano.config.floatX)
+
+    x0 = tensor.matrix('features_x0', dtype = 'floatX')
+    x1 = tensor.matrix('features_x1', dtype = 'floatX')
+
+    y0 = tensor.matrix('targets_x0', dtype = 'floatX')
+    y1 = tensor.matrix('targets_x1', dtype = 'floatX')
+
+    x = tensor.stack([x0, x1], axis=2)
+    y = tensor.stack([y0, y1], axis=2)
+
     x = x.swapaxes(0,1)
     y = y.swapaxes(0,1)
 
-    cost, mu, sigma, mixing, output_hiddens, mu_linear, sigma_linear, mixing_linear, cells = nn_fprop(x, y, in_size[network_mode], out_size[network_mode], hidden_size[network_mode], num_layers, layer_models[network_mode][0], 'MDN', training=False)
+    x_mask0 = tensor.matrix('features_x0_mask', dtype = 'floatX')
+    x_mask1 = tensor.matrix('features_x1_mask', dtype = 'floatX')
+    y_mask0 = tensor.matrix('targets_x0_mask', dtype = 'floatX')
+    y_mask1 = tensor.matrix('targets_x1_mask', dtype = 'floatX')
+
+
+    x_mask = x_mask0
+    x_mask = x_mask.swapaxes(0,1)
+
+    y_mask = y_mask0
+    y_mask = y_mask.swapaxes(0,1)
+
+    cost, mu, sigma, mixing, output_hiddens, mu_linear, sigma_linear, mixing_linear, cells = nn_fprop(x, y, x_mask, y_mask, in_size[network_mode], out_size[network_mode], hidden_size[network_mode], num_layers, layer_models[network_mode][0], 'MDN', training=False)
     main_loop = MainLoop(algorithm=None, data_stream=None, model=Model(cost),
                          extensions=[saveload.Load(save_path[network_mode])])
 
@@ -123,19 +119,27 @@ if __name__ == '__main__':
     # hiddens = [act[-1].flatten() for act in hiddens]
     # states_as_params = [tensor.vhiddensector(dtype=initial.dtype) for initial in initials]
     # zip(initials, states_as_params)
-    fprop_mu = theano.function([x], [mu])
-    fprop_sigma = theano.function([x], [sigma])
-    fprop_mixing = theano.function([x], [mixing])
+    fprop_mu = theano.function([x, x_mask], [mu])
+    # fprop_sigma = theano.function([x], [sigma])
+    # fprop_mixing = theano.function([x], [mixing])
     # states_values = [initial.get_value() for initial in initials]
 
     #predicted = np.array([1,1], dtype=theano.config.floatX)
     #x_curr = [[predicted]]
 
     #print(x[2].eval())
+    file = h5py.File(hdf5_file[network_mode], 'r')
 
-    input_dataset = file['features']  # input_dataset.shape is (8928, 200, 2)
-    input_dataset = np.swapaxes(input_dataset,0,1)
-    print input_dataset.shape
+    input_x0 = file['features_x0']  # input_dataset.shape is (8928, 200, 2) features_x0
+    input_x1 = file['features_x1']
+
+    shapes = [np.asarray(piece).shape for piece in input_x0]
+    # print shapes[1]
+    lengths = [shape[0] for shape in shapes]
+    max_sequence_length = max(lengths)
+
+    # input_dataset = np.swapaxes(input_dataset,0,1)
+    # print input_dataset.shape
 
     output_mu = np.empty((200, 2, components_size[network_mode]), dtype='float32')
     output_sigma = np.empty((200, components_size[network_mode]), dtype='float32')
@@ -143,18 +147,36 @@ if __name__ == '__main__':
     #sample_results = sample([x], fprop, [component_mean])
     #x_curr = [input_dataset[0,:,:]]
 
-    for i in range(50):
-        x_curr = input_dataset[:,i:i+1,:]
-        print x_curr.shape
-        mu_ = sample(x_curr, fprop_mu)  # the shape of input_sec_network is (200,)
-        sigma_ = sample(x_curr, fprop_sigma)
-        mixing_ = sample(x_curr, fprop_mixing)
-        ############  make data for the second network ########################
-        mu_ = mu_[-1]
 
-        output_mu[i, 0, :] = my_longitude(mu_[0])
-        output_mu[i, 1, :] = my_latitude(mu_[1])
-        # 
+
+
+    for i in range(50):
+
+        x_curr = np.zeros((max_sequence_length, 1, 2))
+        x_curr_mask = np.zeros((max_sequence_length, 1))
+        x_curr[:lengths[i], 0, 0] = input_x0[i]
+        x_curr[:lengths[i], 0, 1] = input_x1[i]
+
+        x_curr_mask[:lengths[i], :] = 1
+
+        x_curr=x_curr.astype('float32')
+        x_curr_mask=x_curr_mask.astype('float32')
+
+        mu_ = sample(x_curr, x_curr_mask, fprop_mu)
+        mu_ = mu_[-1]
+        # print x_curr.shape
+        # print x_curr_mask.shape
+        # print x_curr_mask
+
+        # sigma_ = sample(x_curr, x_mask, fprop_sigma)
+        # mixing_ = sample(x_curr, fprop_mixing)
+        ############  make data for the second network ########################
+        # mu_ = mu_[-1]
+        # print mu_.shape
+        # print mu_[0]
+        output_mu[i, 0, :] = mu_[0]  #my_longitude(mu_[0])
+        output_mu[i, 1, :] = mu_[1]   #my_latitude(mu_[1])
+        #
         # output_sigma[i, :] = sigma_[-1]
         # output_mixing[i, :] = mixing_[-1]
 
@@ -169,20 +191,22 @@ plt.ion()
 fig, ax = plt.subplots()
 
 plt.subplots_adjust(bottom=0.2)
+# plt.axes([-5, 5, -5, 5])
+original_longitude = input_x0
+original_latitude = input_x1
 
-
-longitude = input_dataset[:, index, 0]
-longitude = longitude[longitude > 0.5]
-longitude = longitude[longitude < 4]
-original_longitude = my_longitude(longitude)
-
-latitude = input_dataset[:, index, 1]
-latitude = latitude[latitude > 0.5]
-latitude = latitude[latitude < 4]
-original_latitude = my_latitude(latitude)
+# longitude = input_dataset[:, index, 0]
+# longitude = longitude[longitude > 0.5]
+# longitude = longitude[longitude < 4]
+# original_longitude = my_longitude(longitude)
+#
+# latitude = input_dataset[:, index, 1]
+# latitude = latitude[latitude > 0.5]
+# latitude = latitude[latitude < 4]
+# original_latitude = my_latitude(latitude)
 #
 #
-l1, = plt.plot(original_longitude, original_latitude, 'bo')
+l1, = plt.plot(original_longitude[index], original_latitude[index], 'bo')
 l2, = plt.plot(output_mu[index, 0, :], output_mu[index, 1, :], 'ro')
 
 # g = gengmm(400)
@@ -221,14 +245,14 @@ class Index(object):
     def next(self, event):
         self.index += 1
 
-        longitude = input_dataset[:, self.index, 0]
-        original_longitude = my_longitude(longitude[longitude > 0.5])
-
-        latitude = input_dataset[:, self.index, 1]
-        original_latitude = my_latitude(latitude[latitude > 0.5])
-
-        l1.set_xdata(original_longitude)
-        l1.set_ydata(original_latitude)
+        # longitude = input_dataset[:, self.index, 0]
+        # original_longitude = my_longitude(longitude[longitude > 0.5])
+        #
+        # latitude = input_dataset[:, self.index, 1]
+        # original_latitude = my_latitude(latitude[latitude > 0.5])
+        #
+        l1.set_xdata(original_longitude[self.index])
+        l1.set_ydata(original_latitude[self.index])
 
         # g.means_=output_mu[self.index,:,:]
         # g.covariances_=output_sigma[self.index,:]

@@ -2,15 +2,15 @@ config = {}
 
 config['network_mode'] = 0
 config['batch_size'] = [100, 10]  # number of samples taken per each update. You might want to increase it to make the training faster, but you might not get the same result.
-config['hidden_size'] = [800, 200]
+config['hidden_size'] = [400, 200]
 config['learning_rate'] = [.00005, .0001]
 config['learning_rate_decay'] = [0.999, 0.999]  # set to 0 to not decay learning rate
 config['decay_rate'] = [0.999, 0.999]  # decay rate for rmsprop
 config['step_clipping'] = [1.0, 10.0]  # clip norm of gradients at this value
 config['dropout'] = [.0, .0]
 config['nepochs'] = [1000, 1000]  # number of full passes through the training data
-config['num_batches'] = [17568, 1000]  # number of full passes through the training data
-config['seq_length'] = [400, 24]  # number of waypoints in the truncated sequence
+# config['num_batches'] = [17568, 1000]  # number of full passes through the training data
+# config['seq_length'] = [400, 24]  # number of waypoints in the truncated sequence
 config['hdf5_file'] = ['input.hdf5', 'input_two.hdf5']  # hdf5 file with Fuel format
 config['layer_models'] = [['lstm'], ['lstm']] # feedforward, lstm, rnn
 config['num_layers'] = len(config['layer_models'][config['network_mode']])
@@ -68,7 +68,7 @@ config['connect_h_to_o'] = True
 config['out_round_decimal'] = 2
 
 # parameters of MDN
-config['components_size'] = [800, 600]
+config['components_size'] = [400, 600]
 config['seed'] = 66478
 
 # outputting one dimension at a time parameters - Predicting only one dimension of the output at a time. The sequence length would be multiplied by the output dimension. Seems slow!
@@ -82,8 +82,8 @@ config['user_prefs'] = False
 
 config['train_size'] = [0.80, 0.80]  # fraction of data that goes into train set
 # path to the best model file
-config['save_path'] = ['models/{0}_{1}_{2}_{3}_{4}_best.pkl'.format(config['components_size'][0], config['num_layers'], config['hidden_size'][0], config['batch_size'][0], config['seq_length'][0]), 'models/{0}_{1}_{2}_{3}_{4}_best.pkl'.format(config['components_size'][1], config['num_layers'], config['hidden_size'][1], config['batch_size'][1], config['seq_length'][1])]
+config['save_path'] = ['models/{0}_{1}_{2}_{3}_best.pkl'.format(config['components_size'][0], config['num_layers'], config['hidden_size'][0], config['batch_size'][0]), 'models/{0}_{1}_{2}_{3}_best.pkl'.format(config['components_size'][1], config['num_layers'], config['hidden_size'][1], config['batch_size'][1])]
 # path to save the model of the last epoch
-config['last_path'] = ['models/{0}_{1}_{2}_{3}_{4}_last.pkl'.format(config['components_size'][0], config['num_layers'], config['hidden_size'][0], config['batch_size'][0], config['seq_length'][0]), 'models/{0}_{1}_{2}_{3}_{4}_last.pkl'.format(config['components_size'][1], config['num_layers'], config['hidden_size'][1], config['batch_size'][1], config['seq_length'][1])]
+config['last_path'] = ['models/{0}_{1}_{2}_{3}_last.pkl'.format(config['components_size'][0], config['num_layers'], config['hidden_size'][0], config['batch_size'][0]), 'models/{0}_{1}_{2}_{3}_last.pkl'.format(config['components_size'][1], config['num_layers'], config['hidden_size'][1], config['batch_size'][1])]
 config['load_path'] = config['save_path'][config['network_mode']]
 config['hierarchy_models'] = [config['save_path'][config['network_mode']]]

@@ -5,7 +5,7 @@ import numpy as np
 from fuel.datasets import H5PYDataset
 from fuel.streams import DataStream
 from fuel.schemes import SequentialScheme, ShuffledScheme
-from fuel.transformers import Mapping
+from fuel.transformers import Mapping, Padding
 from blocks.extensions import saveload, predicates
 from blocks.extensions.training import TrackTheBest
 from blocks import main_loop
@@ -46,5 +46,5 @@ def get_stream(hdf5_file, which_set, batch_size=None):
         examples=dataset.num_examples, batch_size=batch_size))
     # Required because Recurrent bricks receive as input [sequence, batch,
     # features]
-
+    stream = Padding(stream)
     return stream
