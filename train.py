@@ -77,7 +77,7 @@ step_rules = [RMSProp(learning_rate=learning_rate[network_mode], decay_rate=deca
               StepClipping(step_clipping[network_mode])]
 # step_rules = [Adam(learning_rate=learning_rate[network_mode]), StepClipping(step_clipping[network_mode])]
 algorithm = GradientDescent(cost=cost, parameters=cg.parameters,
-                            step_rule=CompositeRule(step_rules), on_unused_sources='ignore')
+                            step_rule=CompositeRule(step_rules), on_unused_sources='ignore') #, on_unused_sources='ignore'
 
 # Extensions
 gradient_norm = aggregation.mean(algorithm.total_gradient_norm)

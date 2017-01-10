@@ -38,7 +38,7 @@ outputs_x1 = []
 
 for i in range(nsamples):
 
-    seq = np.random.randint(200)
+    seq = np.random.randint(300) # just one number, seq_length
     eachPiece = np.random.rand(seq) * 2 + 1
     fillEnd = np.ones((1)) * 4
     eachPiece = np.concatenate((eachPiece, fillEnd))
@@ -60,7 +60,13 @@ fillEnd = np.ones((1)) * 4
 eachPiece = np.concatenate((eachPiece, fillEnd))
 
 inputs_x0[0] = eachPiece
+
+eachPiece = np.random.rand(300) * 2 + 1
+fillEnd = np.ones((1)) * 4
+eachPiece = np.concatenate((eachPiece, fillEnd))
+
 inputs_x1[0] = eachPiece
+
 print np.asarray(inputs_x0[0]).shape
 
 eachPiece = np.random.rand(300) * 2 + 1
@@ -68,6 +74,11 @@ fillEnd = np.ones((1)) * 4
 eachPiece = np.concatenate((eachPiece, fillEnd))
 
 inputs_x0[nsamples - 1] = eachPiece
+
+eachPiece = np.random.rand(300) * 2 + 1
+fillEnd = np.ones((1)) * 4
+eachPiece = np.concatenate((eachPiece, fillEnd))
+
 inputs_x1[nsamples - 1] = eachPiece
 
 # print inputs_x0[0].shape

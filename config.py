@@ -2,7 +2,7 @@ config = {}
 
 config['network_mode'] = 0
 config['batch_size'] = [100, 10]  # number of samples taken per each update. You might want to increase it to make the training faster, but you might not get the same result.
-config['hidden_size'] = [400, 200]
+config['hidden_size'] = [200, 200]
 config['learning_rate'] = [.00005, .0001]
 config['learning_rate_decay'] = [0.999, 0.999]  # set to 0 to not decay learning rate
 config['decay_rate'] = [0.999, 0.999]  # decay rate for rmsprop
@@ -68,7 +68,7 @@ config['connect_h_to_o'] = True
 config['out_round_decimal'] = 2
 
 # parameters of MDN
-config['components_size'] = [400, 600]
+config['components_size'] = [200, 600]
 config['seed'] = 66478
 
 # outputting one dimension at a time parameters - Predicting only one dimension of the output at a time. The sequence length would be multiplied by the output dimension. Seems slow!

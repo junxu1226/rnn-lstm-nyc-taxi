@@ -55,14 +55,17 @@ def MDN_output_layer(x, h, y, y_mask, in_size, out_size, hidden_size, pred):
     exponent = exponent + T.log(mixing) - (out_size * .5) * T.log(normalizer)
     # LogSumExp(x)
 
-    exponent =  y_mask.dimshuffle(0, 1, 'x')  * exponent
+    # exponent =  y_mask.dimshuffle(0, 1, 'x').repeat(exponent.shape[2], axis=2)  * exponent
     max_exponent = T.max(exponent , axis=2, keepdims=True)
     mod_exponent = exponent - max_exponent
     gauss_mix = T.sum(T.exp(mod_exponent), axis=2, keepdims=True)
     log_gauss = T.log(gauss_mix) + max_exponent
     # mean over the batch, mean over sequence
     # cost = -(log_gauss * y_mask).sum() / y_mask.sum()
-    cost = -T.mean(log_gauss, axis=1).mean()
+    log_gauss = y_mask.dimshuffle(0, 1, 'x') * log_gauss
+
+    # cost = -T.mean(log_gauss, axis=1).mean()
+    cost = - log_gauss.sum() / y_mask.sum()
     # cost = (cost * y_mask).sum() / y_mask.sum()
     output_hiddens = last_hiddens
     #shared_hiddens.set_value(hiddens[-1,:,:])
@@ -255,8 +258,8 @@ def lstm_layer(in_size, dim, x, x_mask, h, n, first_layer = False):
             linear = Linear(input_dim=in_size + dim, output_dim=dim * 4, name='linear' + str(n) + '-' )
         else:
             lstm_input = h[n-1]
-            linear = Linear(input_dim=dim, output_dim=dim * 4, name='linear' + str(n) + '-' )
-    lstm = LSTM(dim=dim , name=layer_models[network_mode][n] + str(n) + '-' )
+            linear = LN_LSTM(input_dim=dim, output_dim=dim * 4, name='linear' + str(n) + '-' )
+    lstm = LN_LSTM(dim=dim , name=layer_models[network_mode][n] + str(n) + '-' )
     initialize([linear, lstm])
     if layer_models[network_mode][n] == 'lstm':
         return lstm.apply(linear.apply(lstm_input), mask=x_mask)
