@@ -16,10 +16,10 @@ from blocks.utils import shared_like
 import logging
 locals().update(config)
 
-def initialize(to_init):
+def initialize(to_init, weights_init=Uniform(width=0.08), biases_init=Constant(0)):
     for bricks in to_init:
-        bricks.weights_init = initialization.Uniform(width=0.08)
-        bricks.biases_init = initialization.Constant(0)
+        bricks.weights_init = weights_init
+        bricks.biases_init = biases_init
         bricks.initialize()
 
 def MDN_output_layer(x, h, y, y_mask, in_size, out_size, hidden_size, pred):
@@ -31,45 +31,49 @@ def MDN_output_layer(x, h, y, y_mask, in_size, out_size, hidden_size, pred):
         hidden_out_size = hidden_size
 
     #shared_hiddens = shared_like(hiddens[-1,:,:])
-    mu_linear = Linear(name='mu_linear' + str(pred), input_dim=hidden_out_size, output_dim=out_size * components_size[network_mode])
+    mu_linear = Linear(name='mu_linear' + str(pred), input_dim=hidden_out_size, output_dim= num_features * components_size[network_mode])
     sigma_linear = Linear(name='sigma_linear' + str(pred), input_dim=hidden_out_size, output_dim=components_size[network_mode])
     mixing_linear = Linear(name='mixing_linear' + str(pred), input_dim=hidden_out_size, output_dim=components_size[network_mode])
     initialize([mu_linear, sigma_linear, mixing_linear])
-    last_hiddens = hiddens[-1,:,:]
+    # last_hiddens = hiddens[-1,:,:]
+    last_hiddens = hiddens
     mu = mu_linear.apply(last_hiddens)
-    mu = mu.reshape((mu.shape[0], out_size, components_size[network_mode]))
-    sigma = sigma_linear.apply(last_hiddens)
-    sigma = T.nnet.softplus(sigma)
-    mixing = mixing_linear.apply(last_hiddens)
-    # apply softmax to mixing
-    e_x = T.exp(mixing - mixing.max(axis=1, keepdims=True))
-    mixing = e_x / e_x.sum(axis=1, keepdims=True)
-    # calculate cost
-    # nonzero_mask = (y.dimshuffle(0, 1, 2, 'x').round().clip(.1,.6)-.1)*2
+    mu = mu.reshape((mu.shape[0], mu.shape[1], num_features, components_size[network_mode]))
 
-    # y.shape = (seq, batch, features) mu.shape = (batch, features, component)    final shape (seq, batch, features, component)
-    # shape of y_mask   (seq, 1)
-    # y_mask = y_mask.reshape((y.shape[0], ))
-    exponent = -0.5 * T.inv(sigma) * T.sum(((y.dimshuffle(0, 1, 2, 'x') - mu.dimshuffle('x', 0, 1, 2))) ** 2, axis=2)
+    sigma_orig = sigma_linear.apply(last_hiddens)
+    sigma = T.nnet.softplus(sigma_orig)
+
+    mixing_orig = mixing_linear.apply(last_hiddens)
+    e_x = T.exp(mixing_orig - mixing_orig.max(axis=2, keepdims=True))
+    mixing = e_x / e_x.sum(axis=2, keepdims=True)
+
+    exponent = -0.5 * T.inv(sigma) * T.sum((y.dimshuffle(0, 1, 2, 'x') - mu) ** 2, axis=2)
     normalizer = (2 * np.pi * sigma)
     exponent = exponent + T.log(mixing) - (out_size * .5) * T.log(normalizer)
-    # LogSumExp(x)
 
-    # exponent =  y_mask.dimshuffle(0, 1, 'x').repeat(exponent.shape[2], axis=2)  * exponent
+    # LogSumExp(x)
     max_exponent = T.max(exponent , axis=2, keepdims=True)
     mod_exponent = exponent - max_exponent
     gauss_mix = T.sum(T.exp(mod_exponent), axis=2, keepdims=True)
     log_gauss = T.log(gauss_mix) + max_exponent
-    # mean over the batch, mean over sequence
-    # cost = -(log_gauss * y_mask).sum() / y_mask.sum()
-    log_gauss = y_mask.dimshuffle(0, 1, 'x') * log_gauss
-
-    # cost = -T.mean(log_gauss, axis=1).mean()
-    cost = - log_gauss.sum() / y_mask.sum()
+    cost = -T.mean(log_gauss)
+    # cost = - log_gauss.sum() / y_mask.sum()
     # cost = (cost * y_mask).sum() / y_mask.sum()
     output_hiddens = last_hiddens
-    #shared_hiddens.set_value(hiddens[-1,:,:])
-    return cost, mu, sigma, mixing, output_hiddens, mu_linear, sigma_linear, mixing_linear
+
+
+    srng = RandomStreams(seed=seed)
+    mixing = mixing_orig * (1 + sampling_bias)
+    sigma = T.nnet.softplus(sigma_orig - sampling_bias)
+    e_x = T.exp(mixing - mixing.max(axis=2, keepdims=True))
+    mixing = e_x / e_x.sum(axis=2, keepdims=True)
+    component = srng.multinomial(pvals=mixing)
+    component_mean = T.sum(mu * component.dimshuffle(0, 1, 'x', 2), axis=3)
+    component_std = T.sum(sigma * component, axis=2, keepdims=True)
+    linear_output = srng.normal(avg=component_mean, std=component_std)
+    linear_output.name = 'linear_output'
+
+    return linear_output, cost
 
 
 def SEC_MDN_output_layer(x, h, y, in_size, out_size, hidden_size, pred):
@@ -154,19 +158,15 @@ def softmax_output_layer(x, h, y, in_size, out_size, hidden_size, pred):
 def output_layer(x, h, y, y_mask, in_size, out_size, hidden_size, cost_mode):
     hiddens = h
     if cost_mode == 'MDN':
-        cost, mu, sigma, mixing, output_hiddens, mu_linear, sigma_linear, mixing_linear = MDN_output_layer(x, hiddens, y, y_mask, in_size, out_size, hidden_size, '-')
-        cost.name = 'cost'
-        return cost, mu, sigma, mixing, output_hiddens, mu_linear, sigma_linear, mixing_linear
+        linear_output, cost = MDN_output_layer(x, hiddens, y, y_mask, in_size, out_size, hidden_size, '-')
     elif cost_mode == 'SEC_MDN':
         linear_output, cost = SEC_MDN_output_layer(x, hiddens, y, in_size, out_size, hidden_size, '-')
-        cost.name = 'cost'
-        return linear_output, cost
     elif cost_mode == 'MSE':
         linear_output, cost = MSE_output_layer(x, hiddens, y, in_size, out_size, hidden_size, '-')
     elif cost_mode == 'Softmax':
         linear_output, cost = softmax_output_layer(hiddens, y, in_size, out_size, hidden_size, '-')
     cost.name = 'cost'
-    return linear_output, cost, mu, sigma, mixing, output_hiddens
+    return linear_output, cost
 
 
 def linear_layer(in_size, dim, x, h, n, first_layer=False):
@@ -262,7 +262,8 @@ def lstm_layer(in_size, dim, x, x_mask, h, n, first_layer = False):
     lstm = LN_LSTM(dim=dim , name=layer_models[network_mode][n] + str(n) + '-' )
     initialize([linear, lstm])
     if layer_models[network_mode][n] == 'lstm':
-        return lstm.apply(linear.apply(lstm_input), mask=x_mask)
+        # return lstm.apply(linear.apply(lstm_input), mask=x_mask)
+            return lstm.apply(linear.apply(lstm_input))
     elif layer_models[network_mode][n] == 'mt_lstm':
         return lstm.apply(linear.apply(lstm_input), time_scale=layer_resolutions[n], time_offset=layer_execution_time_offset[n])
 

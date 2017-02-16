@@ -1,18 +1,21 @@
 config = {}
 
 config['network_mode'] = 0
-config['batch_size'] = [100, 10]  # number of samples taken per each update. You might want to increase it to make the training faster, but you might not get the same result.
-config['hidden_size'] = [200, 200]
-config['learning_rate'] = [.00005, .0001]
-config['learning_rate_decay'] = [0.999, 0.999]  # set to 0 to not decay learning rate
+config['batch_size'] = [15, 10]  # number of samples taken per each update. You might want to increase it to make the training faster, but you might not get the same result.
+config['hidden_size'] = [350, 70]
+config['learning_rate'] = [.0001, .0001]
+config['learning_rate_decay'] = [0.99, 0.99]  # set to 0 to not decay learning rate
 config['decay_rate'] = [0.999, 0.999]  # decay rate for rmsprop
-config['step_clipping'] = [1.0, 10.0]  # clip norm of gradients at this value
+config['step_clipping'] = [5.0, 10.0]  # clip norm of gradients at this value
 config['dropout'] = [.0, .0]
 config['nepochs'] = [1000, 1000]  # number of full passes through the training data
-# config['num_batches'] = [17568, 1000]  # number of full passes through the training data
-# config['seq_length'] = [400, 24]  # number of waypoints in the truncated sequence
+config['num_features'] = 19164
+config['std'] = 12.0
+config['timestamp_length'] = 60  # in mins
+config['num_points'] = [1000, 1000]
+config['seq_length'] = [48, 12]  # number of waypoints in the truncated sequence
 config['hdf5_file'] = ['input.hdf5', 'input_two.hdf5']  # hdf5 file with Fuel format
-config['layer_models'] = [['lstm'], ['lstm']] # feedforward, lstm, rnn
+config['layer_models'] = [['lstm','lstm'], ['lstm']] # feedforward, lstm, rnn
 config['num_layers'] = len(config['layer_models'][config['network_mode']])
 config['input_columns'] = ['Pickup_longitude', 'Pickup_latitude']
 config['output_columns'] = ['Pickup_longitude', 'Pickup_latitude']
@@ -68,8 +71,9 @@ config['connect_h_to_o'] = True
 config['out_round_decimal'] = 2
 
 # parameters of MDN
-config['components_size'] = [200, 600]
+config['components_size'] = [20, 1]
 config['seed'] = 66478
+config['sampling_bias'] = 5.0
 
 # outputting one dimension at a time parameters - Predicting only one dimension of the output at a time. The sequence length would be multiplied by the output dimension. Seems slow!
 config['single_dim_out'] = False

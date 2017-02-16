@@ -12,40 +12,41 @@ locals().update(config)
 network_mode = 0
 
 # timeprocess = lambda x: x.replace(minute = (x.minute/timestamp_length) * timestamp_length, second=0)
-# date_parser = pd.tseries.tools.to_datetime
+date_parser = pd.tseries.tools.to_datetime
 
-# path ='./data/' # use your path
-# all_files = glob.glob(os.path.join(path, "*.csv"))
-# print "total number of datasets: " + str(len(all_files)) + ", in " + str(len(all_files) / 2) +" months"
+path ='./data/' # use your path
+all_files = glob.glob(os.path.join(path, "*.csv"))
+print "total number of datasets: " + str(len(all_files)) + ", in " + str(len(all_files) / 2) +" months"
 # date_parser=date_parser,
-# df_each = (pd.read_csv(f, index_col = False, header=0, usecols=[1, 5, 6], parse_dates=[0], infer_datetime_format=True, names=['Pickup_datetime', 'Pickup_longitude', 'Pickup_latitude'], memory_map=True) for f in all_files)
-#
-# df = pd.concat(df_each, ignore_index=True)
-df_2013 = pd.read_csv('./data/2013.csv', index_col = False, parse_dates=[0], infer_datetime_format=True)
-df_2014 = pd.read_csv('./data/2014.csv', index_col = False, parse_dates=[0], infer_datetime_format=True)
-df_2015 = pd.read_csv('./data/2015.csv', index_col = False, parse_dates=[0], infer_datetime_format=True)
-df_2016 = pd.read_csv('./data/2016.csv', index_col = False, parse_dates=[0], infer_datetime_format=True)
+df_each = (pd.read_csv(f, index_col = False, header=0, usecols=[1, 5, 6], parse_dates=[0], infer_datetime_format=True, names=['Pickup_datetime', 'Pickup_longitude', 'Pickup_latitude'], memory_map=True) for f in all_files)
 
+df = pd.concat(df_each, ignore_index=True)
 
-data_geohash = np.array(df_2013['Pickup_geohash'], dtype="S7")
-print data_geohash.shape
-data_geohash = np.concatenate((data_geohash, np.array(df_2014['Pickup_geohash'], dtype="S7"), np.array(df_2015['Pickup_geohash'], dtype="S7"), np.array(df_2016['Pickup_geohash'], dtype="S7")))
-print data_geohash.shape
+df = df[(df['Pickup_longitude'] > -74.06) & (df['Pickup_longitude'] < -73.77) &
+        (df['Pickup_latitude'] < 40.91) & (df['Pickup_latitude'] > 40.61)]
+print df.shape
+df['Pickup_datetime'] = df['Pickup_datetime'].apply(lambda x: x.replace(minute=0, second=0))
+print df[:10]
+df['Pickup_geohash'] = df[['Pickup_latitude', 'Pickup_longitude']].apply(lambda x: geohash.encode(x[0], x[1], precision=7), axis=1)
+print df[:10]
+df = df[['Pickup_datetime', 'Pickup_geohash']]
+print df.head(10)
+print df.shape
 
+print "total number of GPS traces: " + str(df.shape[0])
 
-# print "total number of GPS traces: " + str(df.shape[0])
-
+data_geohash = np.array(df['Pickup_geohash'], dtype="S7")
 sorted_unique_geohash, num_pickups = np.unique(data_geohash, return_counts=True)
 print "total number of geohashed location: " + str(sorted_unique_geohash.shape)
 
-sorted_unique_geohash = sorted_unique_geohash[num_pickups > 40]
+sorted_unique_geohash = sorted_unique_geohash[num_pickups > 24]
 sorted_unique_geohash.sort()
 print "after dropping small pickups (number of features): " + str(sorted_unique_geohash.shape)
 
-startDateTime = datetime.datetime(2013, 01, 01, 0, 0, 0)
-endDateTime = datetime.datetime(2013, 01, 01, 1, 0, 0)
+startDateTime = datetime.datetime(2015, 01, 01, 0, 0, 0)
+endDateTime = datetime.datetime(2015, 01, 01, 1, 0, 0)
 sampleDataTime = endDateTime - startDateTime
-endDateTime = datetime.datetime(2016, 07, 01, 0, 0, 0)
+endDateTime = datetime.datetime(2016, 05, 01, 0, 0, 0)
 total_timestamp = (endDateTime - startDateTime).total_seconds() / (timestamp_length * 60)
 print "total number of timestamps: " + str(total_timestamp)
 
@@ -54,25 +55,7 @@ print "total number of timestamps: " + str(total_timestamp)
 data_all =[]
 for i in range(int(total_timestamp)):
     currentDataTime = startDateTime + i * sampleDataTime
-
-    if currentDataTime == datetime.datetime(2013, 01, 01, 0, 0, 0):
-        data = df_2013
-        print currentDataTime
-        print data[:10]
-    elif currentDataTime == datetime.datetime(2014, 01, 01, 0, 0, 0):
-        data = df_2014
-        print currentDataTime
-        print data[:10]
-    elif currentDataTime == datetime.datetime(2015, 01, 01, 0, 0, 0):
-        data = df_2015
-        print currentDataTime
-        print data[:10]
-    elif currentDataTime == datetime.datetime(2016, 01, 01, 0, 0, 0):
-        data = df_2016
-        print currentDataTime
-        print data[:10]
-
-    data_curr, data = data[data['Pickup_datetime'] == currentDataTime], data[data['Pickup_datetime'] != currentDataTime]
+    data_curr, df = df[df['Pickup_datetime'] == currentDataTime], df[df['Pickup_datetime'] != currentDataTime]
     geo_curr = np.array(data_curr['Pickup_geohash'], dtype="S7")
     sorted_uniques, count = np.unique(geo_curr, return_counts=True)   # get the sorted unique array and the count
 

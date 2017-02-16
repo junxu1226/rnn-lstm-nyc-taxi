@@ -46,5 +46,5 @@ def get_stream(hdf5_file, which_set, batch_size=None):
         examples=dataset.num_examples, batch_size=batch_size))
     # Required because Recurrent bricks receive as input [sequence, batch,
     # features]
-    stream = Padding(stream)
+    # stream = Padding(stream)
     return stream
