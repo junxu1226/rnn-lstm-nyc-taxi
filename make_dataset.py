@@ -52,6 +52,7 @@ print "total number of timestamps: " + str(total_timestamp)
 
 # data processing
 data_all =[]
+time = []
 for i in range(int(total_timestamp)):
     currentDataTime = startDateTime + i * sampleDataTime
 
@@ -76,30 +77,41 @@ for i in range(int(total_timestamp)):
     geo_curr = np.array(data_curr['Pickup_geohash'], dtype="S7")
     sorted_uniques, count = np.unique(geo_curr, return_counts=True)   # get the sorted unique array and the count
 
-    pickups_curr = np.zeros(sorted_unique_geohash.shape)  # create current pickup features
+    pickups_curr = np.zeros(sorted_unique_geohash.shape, dtype='float32')  # create current pickup features
     pickups_curr[np.in1d(sorted_unique_geohash, sorted_uniques)] = count[np.in1d(sorted_uniques, sorted_unique_geohash)]  # set pickup num
+    time_info_each_day = np.zeros(5, dtype='float32')
+    time_info_each_day[0] = (currentDataTime.year - 2012 - 2.5) / 1.118    # year
+    time_info_each_day[1] = (currentDataTime.month - 6.5) / 3.4521  # month
+    time_info_each_day[2] = (currentDataTime.day - 15.5) / 8.6554    # day
+    time_info_each_day[3] = (currentDataTime.hour - 11.5) / 6.9222  # hour
+    time_info_each_day[4] = ((2 + (i/24) % 7) % 7 - 4.0) / 2.0         # day of that week, the 2013/01/01 is Tuesday
     if i < 2:
         print sorted_uniques[:20]
         print count[:20]
-        print pickups_curr[:100]
+        print currentDataTime
+        print time_info_each_day
     data_all.append(np.array(pickups_curr))
+    time.append(np.array(time_info_each_day))
 
 
 
 nsamples = int((len(data_all) - 1) // seq_length[network_mode])
-inputs = np.zeros((nsamples, seq_length[network_mode], sorted_unique_geohash.shape[0]), dtype='float32')
-outputs = np.zeros((nsamples, seq_length[network_mode], sorted_unique_geohash.shape[0]), dtype='float32')
+inputs = np.zeros((nsamples, seq_length[network_mode], sorted_unique_geohash.shape[0] + 5), dtype='float32')
+outputs = np.zeros((nsamples, seq_length[network_mode], sorted_unique_geohash.shape[0] + 5), dtype='float32')
 
 
 index = 0
 for i in range(int(nsamples)):
     for j in range(seq_length[network_mode]):
-        inputs[i, j] = data_all[index]
-        outputs[i, j] = data_all[index + 1]
+
+        inputs[i, j,:sorted_unique_geohash.shape[0]] = data_all[index]
+        inputs[i, j,sorted_unique_geohash.shape[0]:] = time[index]
+        outputs[i, j,:sorted_unique_geohash.shape[0]] = data_all[index + 1]
+        outputs[i, j,sorted_unique_geohash.shape[0]:] = time[index + 1]
         index = index + 1
 
 
-helper_inputs = inputs[inputs > 0]
+helper_inputs = inputs[inputs[:,:,:sorted_unique_geohash.shape[0]] > 0]
 print 'the max of pickup is: ' + str(np.max(helper_inputs))
 pickups_std = np.std(helper_inputs).round()
 print 'the std of pickup is: ' + str(pickups_std)
