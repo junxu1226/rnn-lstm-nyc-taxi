@@ -1,6 +1,6 @@
 import theano
 import numpy as np
-from theano import tensor as T, shared
+from theano import tensor as T
 from theano.ifelse import ifelse
 from theano.tensor.shared_randomstreams import RandomStreams
 from blocks import initialization
@@ -9,11 +9,10 @@ from blocks.bricks.parallel import Fork
 from architectures import GatedRecurrent, LSTM, LN_LSTM, SimpleRecurrent
 from blocks.bricks.cost import AbsoluteError, SquaredError
 from config import config
-from blocks.bricks import (MLP, Logistic, Initializable, FeedforwardSequence, Tanh,
-                           NDimensionalSoftmax)
+from blocks.bricks import (MLP, Logistic, Initializable, FeedforwardSequence, Tanh, NDimensionalSoftmax)
 from blocks.initialization import Constant, Uniform
-from blocks.utils import shared_like
 import logging
+
 locals().update(config)
 
 def initialize(to_init, weights_init=Uniform(width=0.08), biases_init=Constant(0)):
@@ -22,7 +21,7 @@ def initialize(to_init, weights_init=Uniform(width=0.08), biases_init=Constant(0
         bricks.biases_init = biases_init
         bricks.initialize()
 
-def MDN_output_layer(x, h, y, y_mask, in_size, out_size, hidden_size, pred):
+def MDN_output_layer(x, h, y, in_size, out_size, hidden_size, pred):
     if connect_h_to_o:
         hiddens = T.concatenate([hidden for hidden in h], axis=2)
         hidden_out_size = hidden_size * len(h)
@@ -30,20 +29,18 @@ def MDN_output_layer(x, h, y, y_mask, in_size, out_size, hidden_size, pred):
         hiddens = h[-1]
         hidden_out_size = hidden_size
 
-    #shared_hiddens = shared_like(hiddens[-1,:,:])
-    mu_linear = Linear(name='mu_linear' + str(pred), input_dim=hidden_out_size, output_dim= num_features * components_size[network_mode])
+    mu_linear = Linear(name='mu_linear' + str(pred), input_dim=hidden_out_size, output_dim= out_size * components_size[network_mode])
     sigma_linear = Linear(name='sigma_linear' + str(pred), input_dim=hidden_out_size, output_dim=components_size[network_mode])
     mixing_linear = Linear(name='mixing_linear' + str(pred), input_dim=hidden_out_size, output_dim=components_size[network_mode])
     initialize([mu_linear, sigma_linear, mixing_linear])
-    # last_hiddens = hiddens[-1,:,:]
-    last_hiddens = hiddens
-    mu = mu_linear.apply(last_hiddens)
-    mu = mu.reshape((mu.shape[0], mu.shape[1], num_features, components_size[network_mode]))
 
-    sigma_orig = sigma_linear.apply(last_hiddens)
+    mu = mu_linear.apply(hiddens)
+    mu = mu.reshape((mu.shape[0], mu.shape[1], out_size, components_size[network_mode]))
+
+    sigma_orig = sigma_linear.apply(hiddens)
     sigma = T.nnet.softplus(sigma_orig)
 
-    mixing_orig = mixing_linear.apply(last_hiddens)
+    mixing_orig = mixing_linear.apply(hiddens)
     e_x = T.exp(mixing_orig - mixing_orig.max(axis=2, keepdims=True))
     mixing = e_x / e_x.sum(axis=2, keepdims=True)
 
@@ -57,10 +54,6 @@ def MDN_output_layer(x, h, y, y_mask, in_size, out_size, hidden_size, pred):
     gauss_mix = T.sum(T.exp(mod_exponent), axis=2, keepdims=True)
     log_gauss = T.log(gauss_mix) + max_exponent
     cost = -T.mean(log_gauss)
-    # cost = - log_gauss.sum() / y_mask.sum()
-    # cost = (cost * y_mask).sum() / y_mask.sum()
-    output_hiddens = last_hiddens
-
 
     srng = RandomStreams(seed=seed)
     mixing = mixing_orig * (1 + sampling_bias)
@@ -73,50 +66,6 @@ def MDN_output_layer(x, h, y, y_mask, in_size, out_size, hidden_size, pred):
     linear_output = srng.normal(avg=component_mean, std=component_std)
     linear_output.name = 'linear_output'
 
-    return linear_output, cost
-
-
-def SEC_MDN_output_layer(x, h, y, in_size, out_size, hidden_size, pred):
-    if connect_h_to_o:
-        hiddens = T.concatenate([hidden for hidden in h], axis=2)
-        hidden_out_size = hidden_size * len(h)
-    else:
-        hiddens = h[-1]
-        hidden_out_size = hidden_size
-
-    mu_linear = Linear(name = 'mu_linear' + str(pred), input_dim = hidden_out_size, output_dim = out_size * components_size[network_mode])
-    sigma_linear = Linear(name = 'sigma_linear' + str(pred), input_dim = hidden_out_size, output_dim = components_size[network_mode])
-    mixing_linear = Linear(name = 'mixing_linear' + str(pred), input_dim = hidden_out_size, output_dim = components_size[network_mode])
-    initialize([mu_linear, sigma_linear, mixing_linear])
-    mu = mu_linear.apply(hiddens)
-    mu = mu.reshape((mu.shape[0], mu.shape[1], out_size, components_size[network_mode]))  # (seq, batch, 200, 50)
-    sigma = sigma_linear.apply(hiddens)
-    sigma = T.nnet.softplus(sigma)
-    mixing = mixing_linear.apply(hiddens)
-    # apply softmax to mixing
-    e_x = T.exp(mixing - mixing.max(axis=2, keepdims=True))
-    mixing = e_x / e_x.sum(axis=2, keepdims=True)
-    # calculate cost
-    exponent = -0.5 * T.inv(sigma) * T.sum((y.dimshuffle(0, 1, 2, 'x') - mu) ** 2, axis=2)
-    normalizer = (2 * np.pi * sigma)
-    exponent = exponent + T.log(mixing) - (out_size * .5) * T.log(normalizer)
-    # LogSumExp(x)
-    max_exponent = T.max(exponent , axis=2, keepdims=True)
-    mod_exponent = exponent - max_exponent
-    gauss_mix = T.sum(T.exp(mod_exponent), axis=2, keepdims=True)
-    log_gauss = T.log(gauss_mix) + max_exponent
-    # mean over the batch, mean over sequence
-    cost = -T.mean(log_gauss, axis=1).mean()
-
-    # sampling
-    srng = RandomStreams(seed=seed)
-    component = srng.multinomial(pvals=mixing)
-    component_mean = T.sum(mu * component.dimshuffle(0, 1, 'x', 2), axis=3)
-    component_std = T.sum(sigma * component, axis=2, keepdims=True)
-    linear_output = srng.normal(avg=component_mean, std=component_std)
-    linear_output.name = 'linear_output'
-
-    # linear_output = 1
     return linear_output, cost
 
 
@@ -155,12 +104,10 @@ def softmax_output_layer(x, h, y, in_size, out_size, hidden_size, pred):
 
     return y_hat, cost
 
-def output_layer(x, h, y, y_mask, in_size, out_size, hidden_size, cost_mode):
+def output_layer(x, h, y, in_size, out_size, hidden_size, cost_mode):
     hiddens = h
     if cost_mode == 'MDN':
-        linear_output, cost = MDN_output_layer(x, hiddens, y, y_mask, in_size, out_size, hidden_size, '-')
-    elif cost_mode == 'SEC_MDN':
-        linear_output, cost = SEC_MDN_output_layer(x, hiddens, y, in_size, out_size, hidden_size, '-')
+        linear_output, cost = MDN_output_layer(x, hiddens, y, in_size, out_size, hidden_size, '-')
     elif cost_mode == 'MSE':
         linear_output, cost = MSE_output_layer(x, hiddens, y, in_size, out_size, hidden_size, '-')
     elif cost_mode == 'Softmax':
@@ -174,7 +121,7 @@ def linear_layer(in_size, dim, x, h, n, first_layer=False):
         input = x
         linear = Linear(input_dim=in_size, output_dim=dim, name='feedforward' + str(n) + '-' )
     elif connect_x_to_h:
-        input = T.concatenate([x] + [h[n - 1]], axis=1)
+        input = T.concatenate([x] + [h[n - 1]], axis=2)
         linear = Linear(input_dim=in_size + dim, output_dim=dim, name='feedforward' + str(n) + '-' )
     else:
         input = h[n - 1]
@@ -228,7 +175,7 @@ def rnn_layer(in_size, dim, x, h, n, first_layer = False):
     elif layer_models[n] == 'mt_rnn':
         return rnn.apply(linear.apply(rnn_input), time_scale=layer_resolutions[n], time_offset=layer_execution_time_offset[n])
 
-def lstm_layer(in_size, dim, x, x_mask, h, n, first_layer = False):
+def lstm_layer(in_size, dim, x, h, n, first_layer = False):
     if connect_h_to_h == 'all-previous':
         if first_layer:
             lstm_input = x
@@ -258,34 +205,47 @@ def lstm_layer(in_size, dim, x, x_mask, h, n, first_layer = False):
             linear = Linear(input_dim=in_size + dim, output_dim=dim * 4, name='linear' + str(n) + '-' )
         else:
             lstm_input = h[n-1]
-            linear = LN_LSTM(input_dim=dim, output_dim=dim * 4, name='linear' + str(n) + '-' )
+            # linear = LN_LSTM(input_dim=dim, output_dim=dim * 4, name='linear' + str(n) + '-' )
+            linear = Linear(input_dim=dim, output_dim=dim * 4, name='linear' + str(n) + '-' )
     lstm = LN_LSTM(dim=dim , name=layer_models[network_mode][n] + str(n) + '-' )
     initialize([linear, lstm])
     if layer_models[network_mode][n] == 'lstm':
+        return lstm.apply(linear.apply(lstm_input))
         # return lstm.apply(linear.apply(lstm_input), mask=x_mask)
-            return lstm.apply(linear.apply(lstm_input))
     elif layer_models[network_mode][n] == 'mt_lstm':
         return lstm.apply(linear.apply(lstm_input), time_scale=layer_resolutions[n], time_offset=layer_execution_time_offset[n])
 
-def add_layer(model, i, in_size, h_size, x, x_mask, h, cells, first_layer = False):
+def add_layer(model, i, in_size, h_size, x, h, cells, first_layer = False):
+    cells = []
     if model == 'rnn' or model == 'mt_rnn':
         h.append(rnn_layer(in_size, h_size, x, h, i, first_layer))
     if model == 'gru':
         h.append(gru_layer(h_size, h[i], i))
     if model == 'lstm' or model == 'mt_lstm':
-        state, cell = lstm_layer(in_size, h_size, x, x_mask, h, i, first_layer)
+        state, cell = lstm_layer(in_size, h_size, x, h, i, first_layer)
         h.append(state)
         cells.append(cell)
     if model == 'feedforward':
         h.append(linear_layer(in_size, h_size, x, h, i, first_layer))
     return h, cells
-def nn_fprop(x, y, x_mask, y_mask, in_size, out_size, hidden_size, num_layers, model, cost_mode, training):
-    if single_dim_out:
-        out_size = 1
+
+def nn_fprop(x, y, in_size, out_size, hidden_size, num_layers, model, cost_mode, training):
     cells = []
     h = []
 
+    # linear = Linear(input_dim=10000, output_dim=1000, name='linear-before_lstm' )
+    # initialize([linear])
+    # x = linear.apply(x)
+    # in_size = 1000
+    if single_dim_out:
+        x = T.extra_ops.repeat(x, out_size, axis=0)
+        y = y.swapaxes(0, 1)
+        y = y.reshape((y.shape[0], y.shape[1]*out_size, 1))
+        y = y.swapaxes(0, 1)
+        out_size = 1
+
     for i in range(num_layers):
         model = layer_models[network_mode][i]
-        h, cells = add_layer(model, i, in_size, hidden_size, x, x_mask, h, cells, first_layer = True if i == 0 else False)
-    return output_layer(x, h, y, y_mask, in_size, out_size, hidden_size, cost_mode) + (cells,)
+        h, cells = add_layer(model, i, in_size, hidden_size, x, h, cells, first_layer = True if i == 0 else False)
+
+    return output_layer(x, h, y, in_size, out_size, hidden_size, cost_mode) + (cells,)

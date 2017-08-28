@@ -44,7 +44,6 @@ def get_stream(hdf5_file, which_set, batch_size=None):
         batch_size = dataset.num_examples
     stream = DataStream(dataset=dataset, iteration_scheme=ShuffledScheme(
         examples=dataset.num_examples, batch_size=batch_size))
-    # Required because Recurrent bricks receive as input [sequence, batch,
-    # features]
+    # Required because Recurrent bricks receive as input [sequence, batch, features]
     # stream = Padding(stream)
     return stream

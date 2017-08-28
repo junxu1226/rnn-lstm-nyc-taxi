@@ -1,7 +1,7 @@
 import theano
 import numpy as np
 import sys
-from theano import tensor
+from theano import tensor as T
 from blocks.model import Model
 from blocks.graph import ComputationGraph, apply_dropout
 from blocks.algorithms import StepClipping, GradientDescent, CompositeRule, RMSProp, Adam
@@ -22,33 +22,13 @@ train_stream = get_stream(hdf5_file[network_mode], 'train', batch_size[network_m
 test_stream = get_stream(hdf5_file[network_mode], 'test', batch_size[network_mode])
 
 # MODEL
-# x = tensor.tensor3('features_x0', dtype = 'floatX')
-x = tensor.tensor3('features', dtype = 'floatX')
-
-
-y = tensor.tensor3('targets', dtype = 'floatX')
-
-# x = tensor.stack([x0, x1], axis=2)
-# y = tensor.stack([y0, y1], axis=2)
-
+x = T.tensor3('features', dtype = 'floatX')
+y = T.tensor3('targets', dtype = 'floatX')
 x = x.swapaxes(0,1)
 y = y.swapaxes(0,1)
-# Required because Recurrent bricks receive as input [sequence, batch,
-# features]
-
-x_mask = []
-y_mask = []
-
 in_size = num_features
 out_size = num_features
-# y_mask = y_mask.swapaxes(0,1)
-# y_mask = y_mask0.dimshuffle(0, 1, 'x')
-# y.dimshuffle(0, 1, 2, 'x')
-
-if network_mode == 0:
-    linear_output, cost, cells = nn_fprop(x, y, x_mask, y_mask, in_size, out_size, hidden_size[network_mode], num_layers, layer_models[network_mode][0], 'MDN', training=True)
-elif network_mode == 1:
-    y_hat, cost, cells = nn_fprop(x, y, in_size[network_mode], out_size[network_mode], hidden_size[network_mode], num_layers, layer_models[network_mode][0], 'MDN', training=True)
+linear_output, cost, cells = nn_fprop(x, y, in_size, out_size, hidden_size[network_mode], num_layers, layer_models[network_mode][0], 'MDN', training=True)
 # COST
 cg = ComputationGraph(cost)
 
@@ -60,11 +40,11 @@ if dropout[network_mode] > 0:
     cost = cg.outputs[0]
 
 # Learning algorithm
-# step_rules = [RMSProp(learning_rate=learning_rate[network_mode], decay_rate=decay_rate[network_mode]),
-#               StepClipping(step_clipping[network_mode])]
-step_rules = [Adam(learning_rate=learning_rate[network_mode]), StepClipping(step_clipping[network_mode])]
-algorithm = GradientDescent(cost=cost, parameters=cg.parameters,
-                            step_rule=CompositeRule(step_rules), on_unused_sources='ignore') #, on_unused_sources='ignore'
+step_rules = [RMSProp(learning_rate=learning_rate[network_mode], decay_rate=decay_rate[network_mode]),
+              StepClipping(step_clipping[network_mode])]
+# step_rules = [Adam(learning_rate=learning_rate[network_mode]), StepClipping(step_clipping[network_mode])]
+algorithm = GradientDescent(cost=cg.outputs[0], parameters=cg.parameters,
+                            step_rule=CompositeRule(step_rules)) #, on_unused_sources='ignore'
 
 # Extensions
 gradient_norm = aggregation.mean(algorithm.total_gradient_norm)
@@ -85,9 +65,10 @@ extensions = [test_monitor, train_monitor, Timing(), Printing(after_epoch=True),
 
 if learning_rate_decay[network_mode] not in (0, 1):
     extensions.append(SharedVariableModifier(step_rules[0].learning_rate,
-                                             lambda n, lr: np.cast[theano.config.floatX](learning_rate_decay[network_mode] * lr), after_epoch=True, after_batch=False))
+                                             lambda n, lr: np.cast[theano.config.floatX](learning_rate_decay[network_mode] * lr),
+                                             after_epoch=False, every_n_epochs=100, after_batch=False))
 
-print 'number of parameters in the model: ' + str(tensor.sum([p.size for p in cg.parameters]).eval())
+print 'number of parameters in the model: ' + str(T.sum([p.size for p in cg.parameters]).eval())
 # Finally build the main loop and train the model
 main_loop = MainLoop(data_stream=train_stream, algorithm=algorithm,
                      model=Model(cost), extensions=extensions)
