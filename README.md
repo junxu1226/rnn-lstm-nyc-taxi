@@ -1,19 +1,21 @@
 # rnn-lstm-nyc-taxi
-Real-time Prediction of Taxi Demand Using Recurrent Neural Networks
+<b>Real-time Prediction of Taxi Demand Using Recurrent Neural Networks</b>
 
-
-<b>Predict in one day</b>
+<br />
+<b>Predict for the entire city</b>
 <p align="center">
-  <img src="https://github.com/junxu1226/rnn-lstm-nyc-taxi/blob/master/figures/output.gif" width="800" height="400" title="Predict in one day" />
+  <img src="https://github.com/junxu1226/rnn-lstm-nyc-taxi/blob/master/figures/output.gif" width="880" height="450" title="Predict for the entire city" />
 </p>
 
-Single impacting factors
+<br />
+
+<b>Prediction error by training with single feature</b>
 <p align="center">
-  <img src="https://github.com/junxu1226/rnn-lstm-nyc-taxi/blob/master/figures/single_impacting_factors.png" width="650" title="Single impacting factors" />
+  <img src="https://github.com/junxu1226/rnn-lstm-nyc-taxi/blob/master/figures/single_impacting_factors.png" width="600" height="550" title="Prediction error by training with single feature" />
 </p>
 
-Impacting factors
+<b>Prediction error by training with different features</b>
 <p align="center">
-  <img src="https://github.com/junxu1226/rnn-lstm-nyc-taxi/blob/master/figures/impacting_factors.png" width="650" title="Impacting factors" />
+  <img src="https://github.com/junxu1226/rnn-lstm-nyc-taxi/blob/master/figures/impacting_factors.png" width="600" height="550" title="Prediction error by training with different features" />
 </p>
 
