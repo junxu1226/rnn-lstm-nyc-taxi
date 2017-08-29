@@ -4,7 +4,7 @@
 <br />
 <b>Predict for the entire city</b>
 <p align="center">
-  <img src="https://github.com/junxu1226/rnn-lstm-nyc-taxi/blob/master/figures/output.gif" width="880" height="450" title="Predict for the entire city" />
+  <img src="https://github.com/junxu1226/rnn-lstm-nyc-taxi/blob/master/figures/output2.gif" width="880" height="450" title="Predict for the entire city" />
 </p>
 
 <br />
